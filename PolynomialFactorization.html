@@ -4,12 +4,29 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <title>因式分解-十字對決</title>
-<script type="text/javascript">
-</script>
 <style type="text/css">
+.iframe-container {
+    width: 100%; /* 縮小容器寬度以便置中 */
+    height: 900px;
+    overflow: hidden;
+    margin: 0 auto; /* 容器置中 */
+    position: relative;
+}
+.iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    transform: scale(1.25);
+    transform-origin: center top; /* 從頂部中心進行縮放 */
+    position: absolute;
+    left: 0%; /* 調整位置來補償縮放效果 */
+    right: 0;
+}
 </style>
 </head>
 <body>
-<iframe src="https://script.google.com/macros/s/AKfycbwKHTB-VfWg4xFA0hRE06FjUWx67Tj1s2Fdp0JzctgtJkWrZhjj-gvngtXBS8o_ID8Z/exec" frameborder="0" scrolling="auto" width="100%" height="800" style=" display: block;">
+<div class="iframe-container">
+    <iframe src="https://script.google.com/macros/s/AKfycbwKHTB-VfWg4xFA0hRE06FjUWx67Tj1s2Fdp0JzctgtJkWrZhjj-gvngtXBS8o_ID8Z/exec" scrolling="auto"></iframe>
+</div>
 </body>
 </html>
