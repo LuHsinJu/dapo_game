@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三角形全等競賽遊戲</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen flex flex-col items-center justify-start p-4 space-y-6 font-sans">
+  <div class="text-center bg-white rounded-lg shadow-md p-4 w-full max-w-6xl">
+    <h1 class="text-4xl font-bold mb-2 text-indigo-700">三角形全等比賽</h1>
+    <!-- <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800"></span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600">05:00</span></div> -->
+  </div>
+  <div class="text-center bg-white rounded-lg shadow-md p-4 w-full max-w-6xl">
+    <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800" style="font-size: 25px;"></span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600" style="font-size: 20px;">05:00</span></div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl">
+    <!-- 玩家 A 區 -->
+    <div class="bg-white rounded-lg shadow-md p-4 space-y-3">
+      <!-- <h2 class="text-xl font-bold text-indigo-700 border-b pb-2">玩家 A</h2> -->
+      <div class="text-2xl text-md font-bold text-indigo-700 border-b pb-2">玩家 A 得分：<span id="scoreA" class="text-indigo-700">0</span> <span style="float: right;">連續錯誤： <span id="wrongA" class="text-red-600 font-bold ">0</span></span></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <canvas id="triangleA1" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△ABC</div> -->
+        </div>
+        <div class="relative">
+          <canvas id="triangleA2" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△DEF</div> -->
+        </div>
+      </div>
+      <div class="text-sm text-gray-700" style="display: none;">已選線索：<div id="logA" class="bg-gray-50 border rounded p-2 h-24 overflow-y-auto whitespace-pre-line text-sm"></div></div>
+      
+      <!-- 玩家A作答區 -->
+      <div class="bg-gray-50 rounded-lg p-3 mt-2">
+        <div class="mb-2 font-bold text-indigo-800">請選擇三角形全等的依據：</div>
+        <div class="flex flex-wrap justify-center gap-2 mb-2">
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'SSS')">SSS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'SAS')">SAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'ASA')">ASA</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'AAS')">AAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'RHS')">RHS</button>
+        </div>
+      </div>
+      
+      <div class="text-sm" id="statusA" style="display: none;">準備中...</div>
+    </div>
+
+    <!-- 玩家 B 區 -->
+    <div class="bg-white rounded-lg shadow-md p-4 space-y-3">
+      <!-- <h2 class="text-xl font-bold text-indigo-700 border-b pb-2">玩家 B</h2> -->
+      <div class="text-2xl text-md font-bold text-indigo-700 border-b pb-2">玩家 B 得分：<span id="scoreB" class="text-indigo-700">0</span><span style="float: right;">連續錯誤： <span id="wrongB" class="text-red-600 font-bold ">0</span></span></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <canvas id="triangleB1" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△ABC</div> -->
+        </div>
+        <div class="relative">
+          <canvas id="triangleB2" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△DEF</div> -->
+        </div>
+      </div>
+      <div class="text-sm text-gray-700" style="display: none;">已選線索：<div id="logB" class="bg-gray-50 border rounded p-2 h-24 overflow-y-auto whitespace-pre-line text-sm"></div></div>
+      
+      <!-- 玩家B作答區 -->
+      <div class="bg-gray-50 rounded-lg p-3 mt-2">
+        <div class="mb-2 font-bold text-indigo-800">請選擇三角形全等的依據：</div>
+        <div class="flex flex-wrap justify-center gap-2 mb-2">
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'SSS')">SSS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'SAS')">SAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'ASA')">ASA</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'AAS')">AAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'RHS')">RHS</button>
+        </div>
+      </div>
+      
+      
+      <div class="text-sm" id="statusB" style="display: none;">準備中...</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-md p-4 w-full max-w-6xl mt-4">
+    <div class="text-sm mb-2 font-bold">全等條件說明：</div>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600">
+      <div><span class="font-bold">SSS</span>：三邊對應相等</div>
+      <div><span class="font-bold">SAS</span>：兩邊及其夾角對應相等</div>
+      <div><span class="font-bold">ASA</span>：兩角及其夾邊對應相等</div>
+      <div><span class="font-bold">AAS</span>：兩角及一非夾邊對應相等</div>
+      <div><span class="font-bold">RHS</span>：直角、斜邊及一股對應相等</div>
+    </div>
+    <div class="mt-2 text-xs text-indigo-800 font-semibold">操作提示：點擊頂點選擇角度，點擊邊選擇邊長</div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        known: 'AB=DE, BC=EF, AC=DF',
+        correct: 'SSS',
+        pairs: ['AB1-AB2', 'BC1-BC2', 'AC1-AC2']
+      },
+      {
+        known: '∠C=∠F, BC=EF, AB=DE',
+        correct: 'SAS',
+        pairs: ['angleC1-angleF2', 'BC1-BC2', 'AB1-AB2']
+      },
+      {
+        known: '∠A=∠D, ∠B=∠E, AB=DE',
+        correct: 'ASA',
+        pairs: ['angleA1-angleD2', 'angleB1-angleE2', 'AB1-AB2']
+      },
+      {
+        known: '∠A=∠D, ∠B=∠E, BC=EF',
+        correct: 'AAS',
+        pairs: ['angleA1-angleD2', 'angleB1-angleE2', 'BC1-BC2']
+      },
+      {
+        known: '∠C=∠F 為直角, ∠B=∠E, 邊AC=DF 為斜邊',
+        correct: 'RHS',
+        pairs: ['angleC1-angleF2', 'angleB1-angleE2', 'AC1-DF2']
+      }
+    ];
+    let scoreA = 0;
+    let scoreB = 0;
+    let wrongA = 0;
+    let wrongB = 0;
+    let currentQuestionIndex = Math.floor(Math.random() * questions.length);
+    let playerAnswers = { 'A': null, 'B': null };
+    let selectedEdges = {
+      triangleA1: {},
+      triangleA2: {},
+      triangleB1: {},
+      triangleB2: {}
+    };
+    let selectedAngles = {
+      triangleA1: {},
+      triangleA2: {},
+      triangleB1: {},
+      triangleB2: {}
+    };
+    let timerInterval;
+
+    function startGame() {
+      document.getElementById('scoreA').innerText = scoreA;
+      document.getElementById('scoreB').innerText = scoreB;
+      document.getElementById('wrongA').innerText = wrongA;
+      document.getElementById('wrongB').innerText = wrongB;
+      document.getElementById('logA').innerText = '';
+      document.getElementById('logB').innerText = '';
+      document.getElementById('statusA').innerText = '輪到你作答...';
+      document.getElementById('statusB').innerText = '輪到你作答...';
+      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      playerAnswers = { 'A': null, 'B': null };
+      startTimer();
+      drawTriangles();
+      setupClickHandlers();
+    }
+
+    function submitAnswer(player, ans) {
+      // 如果玩家已經回答過，忽略
+      if (playerAnswers[player] !== null) {
+        showNotification(`玩家 ${player} 已回答過此題`, 'error');
+        return;
+      }
+      
+      // 記錄玩家答案
+      playerAnswers[player] = ans;
+      document.getElementById(`status${player}`).innerText = `已回答：${ans}`;
+      
+      const correct = questions[currentQuestionIndex].correct;
+      
+      // 立即給予玩家得分和反饋
+      if (ans === correct) {
+        // 增加得分
+        if (player === 'A') {
+          scoreA += 1;
+          wrongA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          document.getElementById('wrongA').innerText = wrongA;
+          document.getElementById('scoreA').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('scoreA').classList.remove('text-green-600'), 1000);
+        } else {
+          scoreB += 1;
+          wrongB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          document.getElementById('wrongB').innerText = wrongB;
+          document.getElementById('scoreB').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('scoreB').classList.remove('text-green-600'), 1000);
+        }
+        
+        // 顯示正確答案通知
+        // showNotification(`玩家 ${player} 答對了！`, 'success');
+      } else {
+        if (player === 'A') {
+          wrongA += 1;
+          document.getElementById('wrongA').innerText = wrongA;
+          document.getElementById('wrongA').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('wrongA').classList.remove('text-green-600'), 1000);
+        } else {
+          wrongB += 1;
+          document.getElementById('wrongB').innerText = wrongB;
+          document.getElementById('wrongB').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('wrongB').classList.remove('text-green-600'), 1000);
+        }
+        if (wrongA === 3) {
+          alert("玩家B獲勝, 玩家A連答錯三次");
+          scoreA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          scoreB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          wrongA = 0;
+          document.getElementById('wrongA').innerText = wrongA;
+          wrongB = 0;
+          document.getElementById('wrongB').innerText = wrongB;
+          startGame();
+        } else if (wrongB === 3) {
+          alert("玩家A獲勝, 玩家B連答錯三次");
+          scoreA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          scoreB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          wrongA = 0;
+          document.getElementById('wrongA').innerText = wrongA;
+          wrongB = 0;
+          document.getElementById('wrongB').innerText = wrongB;
+          startGame();
+        }
+        // showNotification(`玩家 ${player} 答錯了！正確答案是 ${correct}`, 'error');
+      }
+      
+      // 檢查是否雙方都已作答
+      checkBothPlayersAnswered();
+    }
+    
+    function checkBothPlayersAnswered() {
+      // 如果任一玩家已作答，則進入下一題
+      if (playerAnswers['A'] !== null || playerAnswers['B'] !== null) {
+        setTimeout(() => {
+          resetGame();
+        }, 0);
+      }
+    }
+
+    function resetGame() {
+      // 清除已選的邊和角
+      selectedEdges = {
+        triangleA1: {},
+        triangleA2: {},
+        triangleB1: {},
+        triangleB2: {}
+      };
+      selectedAngles = {
+        triangleA1: {},
+        triangleA2: {},
+        triangleB1: {},
+        triangleB2: {}
+      };
+      
+      // 切換到新問題
+      currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      
+      // 清除日誌和狀態
+      document.getElementById('logA').innerText = '';
+      document.getElementById('logB').innerText = '';
+      document.getElementById('statusA').innerText = '輪到你作答...';
+      document.getElementById('statusB').innerText = '輪到你作答...';
+      
+      // 重置玩家答案
+      playerAnswers = { 'A': null, 'B': null };
+      
+      // 重繪三角形
+      drawTriangles();
+    }
+
+    function drawTriangles() {
+      const triangles = [
+        { id: 'triangleA1', labels: ['A', 'B', 'C'] },
+        { id: 'triangleA2', labels: ['D', 'E', 'F'] },
+        { id: 'triangleB1', labels: ['A', 'B', 'C'] },
+        { id: 'triangleB2', labels: ['D', 'E', 'F'] },
+      ];
+      
+      triangles.forEach(tri => {
+        const canvas = document.getElementById(tri.id);
+        canvas.width = canvas.offsetWidth * 0.8;
+        canvas.height = canvas.offsetHeight * 0.8;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 根據不同問題略微調整三角形形狀
+        let points;
+        if (questions[currentQuestionIndex].correct === 'RHS') {
+          // 直角三角形
+          points = [
+            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+            { x: 30, y: 30, label: tri.labels[2] }
+          ];
+        } else {
+          // 普通三角形
+          points = [
+            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+            { x: canvas.width/2, y: 30, label: tri.labels[2] }
+          ];
+        }
+        
+        // 計算每個角的角度信息
+        const angles = [
+          {
+            point: points[0],
+            label: `∠${tri.labels[0]}`,
+            adjacent: [points[2], points[1]]
+          },
+          {
+            point: points[1],
+            label: `∠${tri.labels[1]}`,
+            adjacent: [points[0], points[2]]
+          },
+          {
+            point: points[2],
+            label: `∠${tri.labels[2]}`,
+            adjacent: [points[1], points[0]]
+          }
+        ];
+
+        // 存儲三角形頂點和邊的信息
+        canvas.triangleData = {
+          points: points,
+          angles: angles,
+          edges: [
+            { 
+              points: [points[0], points[1]], 
+              label: points[0].label + points[1].label,
+              midpoint: { x: (points[0].x + points[1].x)/2, y: (points[0].y + points[1].y)/2 }
+            },
+            { 
+              points: [points[1], points[2]], 
+              label: points[1].label + points[2].label,
+              midpoint: { x: (points[1].x + points[2].x)/2, y: (points[1].y + points[2].y)/2 }
+            },
+            { 
+              points: [points[2], points[0]], 
+              label: points[0].label + points[2].label,
+              midpoint: { x: (points[2].x + points[0].x)/2, y: (points[2].y + points[0].y)/2 }
+            }
+          ]
+        };
+        
+        // 繪製三角形
+        drawTriangle(ctx, canvas.triangleData, tri.id);
+      });
+    }
+    
+    function drawTriangle(ctx, triangleData, canvasId) {
+      const { points, edges, angles } = triangleData;
+      console.log(triangleData)
+      // 清除畫布
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      
+      // 為不同邊定義不同的顏色
+      const edgeColors = {
+        'AB': 'blue', // 紫藍色 (indigo)
+        'BC': '#10B981', // 綠色 (emerald)
+        'AC': '#FFA500', // 橙色 (amber)
+        'DE': '#6366F1', // 紫藍色 (indigo)
+        'EF': '#10B981', // 綠色 (emerald)
+        'DF': '#FFA500', // 橙色 (amber)
+        // 如果有其他的邊，可以在這裡添加更多顏色
+      };
+      
+      // 繪製三角形的邊
+      edges.forEach(edge => {
+        ctx.beginPath();
+        ctx.moveTo(edge.points[0].x, edge.points[0].y);
+        ctx.lineTo(edge.points[1].x, edge.points[1].y);
+        
+        // 檢查這條邊是否被選中，如果是則改變顏色
+        if (selectedEdges[canvasId] && selectedEdges[canvasId][edge.label]) {
+          // 根據邊的標籤選擇顏色
+          ctx.strokeStyle = edgeColors[edge.label] || '#6366F1'; // 如果找不到對應顏色，使用默認藍色
+          ctx.lineWidth = 3;
+        } else {
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1.5;
+        }
+        
+        ctx.stroke();
+        
+        // 在邊的中間顯示標籤
+        const color = edgeColors[edge.label] || '#6366F1';
+        ctx.fillStyle = `${color}33`; // 加上33表示20%透明度
+        // const textWidth = ctx.measureText(edge.label).width;
+        // ctx.fillRect(edge.midpoint.x - textWidth/2 - 2, edge.midpoint.y - 8, textWidth + 4, 16);
+        
+        ctx.fillStyle = selectedEdges[canvasId] && selectedEdges[canvasId][edge.label] ? color : '#6366F1';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        // ctx.fillText(edge.label, edge.midpoint.x, edge.midpoint.y + 4);
+      });
+      
+      // 繪製角度標示
+      angles.forEach(angle => {
+        // 計算角度的兩條鄰邊的向量
+        const v1 = {
+          x: angle.adjacent[0].x - angle.point.x,
+          y: angle.adjacent[0].y - angle.point.y
+        };
+        const v2 = {
+          x: angle.adjacent[1].x - angle.point.x,
+          y: angle.adjacent[1].y - angle.point.y
+        };
+        
+        // 計算單位向量
+        const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+        const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+        
+        const u1 = {
+          x: v1.x / len1,
+          y: v1.y / len1
+        };
+        const u2 = {
+          x: v2.x / len2,
+          y: v2.y / len2
+        };
+        
+        // 計算這個角的角度
+        const dot = u1.x * u2.x + u1.y * u2.y;
+        const angleRad = Math.acos(Math.max(-1, Math.min(1, dot)));
+        
+        // 繪製角度弧線
+        // 首先計算兩個向量的角度
+        const angle1 = Math.atan2(v1.y, v1.x);
+        const angle2 = Math.atan2(v2.y, v2.x);
+        
+        // 決定是順時針還是逆時針畫弧
+        let startAngle = angle1;
+        let endAngle = angle2;
+        
+        // 確保是沿著最短的路徑畫弧
+        if (endAngle < startAngle) endAngle += 2 * Math.PI;
+        
+        // 為不同角度定義顏色
+        const angleColors = {
+          '∠A': '#EF4444', // 紅色 (red)
+          '∠B': '#8B5CF6', // 紫色 (violet)
+          '∠C': '#EC4899', // 粉紅色 (pink)
+          '∠D': '#EF4444', // 紅色 (red)
+          '∠E': '#8B5CF6', // 紫色 (violet)
+          '∠F': '#EC4899'  // 粉紅色 (pink)
+        };
+        
+        // 檢查這個角是否被選中
+        if (selectedAngles[canvasId] && selectedAngles[canvasId][angle.label]) {
+          const color = angleColors[angle.label] || '#6366F1';
+          
+          // 如果角度被選中，繪製填充的扇形
+          const radius = 18;
+          ctx.beginPath();
+          ctx.moveTo(angle.point.x, angle.point.y);
+          ctx.arc(angle.point.x, angle.point.y, radius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fillStyle = `${color}33`; // 添加透明度
+          ctx.fill();
+          
+          // 繪製角度弧線
+          ctx.beginPath();
+          ctx.arc(angle.point.x, angle.point.y, radius, startAngle, endAngle);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+      
+      // 繪製頂點和標籤
+      points.forEach((point, idx) => {
+        // 繪製點
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        
+        // 為不同頂點定義顏色
+        const vertexColors = {
+          'A': '#EF4444', // 紅色 (red)
+          'B': '#8B5CF6', // 紫色 (violet)
+          'C': '#EC4899', // 粉紅色 (pink)
+          'D': '#EF4444', // 紅色 (red)
+          'E': '#8B5CF6', // 紫色 (violet)
+          'F': '#EC4899'  // 粉紅色 (pink)
+        };
+        
+        // 如果這個點對應的角度被選中，改變顏色
+        const angleLabel = `∠${point.label}`;
+        if (selectedAngles[canvasId] && selectedAngles[canvasId][angleLabel]) {
+          ctx.fillStyle = vertexColors[point.label] || '#6366F1'; // 選中時的顏色
+        } else {
+          ctx.fillStyle = '#4B5563'; // 未選中時的顏色
+        }
+        
+        ctx.fill();
+        
+        // 繪製標籤
+        ctx.fillStyle = '#000';
+        ctx.font = '17px sans-serif';
+        ctx.textAlign = 'center';
+        if (point.label === 'C' || point.label === 'F') ctx.fillText(point.label, point.x, point.y - 10);
+        else ctx.fillText(point.label, point.x, point.y +20);
+      });
+    }
+
+    function setupClickHandlers() {
+      const playerMapping = {
+        triangleA1: 'A',
+        triangleA2: 'A',
+        triangleB1: 'B',
+        triangleB2: 'B'
+      };
+      
+      const logs = {
+        triangleA1: document.getElementById('logA'),
+        triangleA2: document.getElementById('logA'),
+        triangleB1: document.getElementById('logB'),
+        triangleB2: document.getElementById('logB')
+      };
+      
+      Object.keys(logs).forEach(id => {
+        const canvas = document.getElementById(id);
+        
+        canvas.addEventListener('click', e => {
+          // 獲取此三角形對應的玩家
+          const player = playerMapping[id];
+          
+          // 檢查此玩家是否已經提交答案
+          if (playerAnswers[player] !== null) {
+            showNotification(`玩家 ${player} 已作答，等待下一題`, 'error');
+            return;
+          }
+          
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+          const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+          
+          // 獲取三角形數據
+          const triangleData = canvas.triangleData;
+          if (!triangleData) return;
+          
+          // 首先檢查是否點擊了頂點（角度）
+          let clickedOnVertex = false;
+          for (const angle of triangleData.angles) {
+            const dist = Math.sqrt(
+              Math.pow(x - angle.point.x, 2) + 
+              Math.pow(y - angle.point.y, 2)
+            );
+            
+            if (dist < 18) { // 如果點擊點足夠靠近頂點
+              clickedOnVertex = true;
+              // 切換這個角的選中狀態
+              selectedAngles[id][angle.label] = !selectedAngles[id][angle.label];
+              
+              // 更新日誌
+              const action = selectedAngles[id][angle.label] ? '選擇' : '取消選擇';
+              // logs[id].innerText += `${action}角度 ${angle.label}\n`;
+              
+              // 重繪三角形
+              const ctx = canvas.getContext('2d');
+              drawTriangle(ctx, triangleData, id);
+              
+              break;
+            }
+          }
+          
+          // 如果沒有點擊頂點，則檢查是否點擊了邊
+          if (!clickedOnVertex) {
+            for (const edge of triangleData.edges) {
+              const dist = distanceToLine(
+                x, y, 
+                edge.points[0].x, edge.points[0].y, 
+                edge.points[1].x, edge.points[1].y
+              );
+              
+              if (dist < 18) { // 如果點擊點足夠靠近這條線
+                // 切換這條邊的選中狀態
+                selectedEdges[id][edge.label] = !selectedEdges[id][edge.label];
+                
+                // 更新日誌
+                const action = selectedEdges[id][edge.label] ? '選擇' : '取消選擇';
+                // logs[id].innerText += `${action}線段 ${edge.label}\n`;
+                
+                // 重繪三角形
+                const ctx = canvas.getContext('2d');
+                drawTriangle(ctx, triangleData, id);
+                
+                break;
+              }
+            }
+          }
+        });
+      });
+    }
+    
+    // 計算點到線段的距離
+    function distanceToLine(x, y, x1, y1, x2, y2) {
+      const A = x - x1;
+      const B = y - y1;
+      const C = x2 - x1;
+      const D = y2 - y1;
+      
+      const dot = A * C + B * D;
+      const len_sq = C * C + D * D;
+      let param = -1;
+      
+      if (len_sq != 0) param = dot / len_sq;
+      
+      let xx, yy;
+      
+      if (param < 0) {
+        xx = x1;
+        yy = y1;
+      } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+      } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+      }
+      
+      const dx = x - xx;
+      const dy = y - yy;
+      
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function startTimer() {
+      // 清除之前的計時器如果存在
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      let seconds = 5 * 60;
+      const timerElement = document.getElementById('timer');
+      timerElement.classList.remove('animate-pulse');
+      
+      timerInterval = setInterval(() => {
+        const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const sec = String(seconds % 60).padStart(2, '0');
+        timerElement.textContent = `${min}:${sec}`;
+        
+        // 在最後30秒改變顏色
+        if (seconds <= 30) {
+          timerElement.classList.add('animate-pulse');
+        }
+        
+        seconds--;
+        if (seconds < 0) {
+          clearInterval(timerInterval);
+          showNotification('時間到！比賽結束', 'error');
+          endGame();
+        }
+      }, 1000);
+    }
+    
+    function endGame() {
+      // 比賽結束，顯示最終得分
+      const winner = scoreA > scoreB ? 'A' : (scoreB > scoreA ? 'B' : '平手');
+      const message = winner === '平手' ? '比賽結束，雙方平手！' : `比賽結束，玩家 ${winner} 獲勝！`;
+      
+      setTimeout(() => {
+        alert(`${message}\n玩家A：${scoreA}分\n玩家B：${scoreB}分`);
+        // 重置遊戲
+        scoreA = 0;
+        scoreB = 0;
+        startGame();
+      }, 1000);
+    }
+
+    // 確保頁面載入後啟動遊戲
+    window.onload = startGame;
+    
+    // 響應式調整
+    window.addEventListener('resize', drawTriangles);
+  </script>
+</body>
+</html>
