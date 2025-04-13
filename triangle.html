@@ -924,7 +924,7 @@ button.bg-indigo-100:hover {
         clearInterval(timerInterval);
       }
       
-      let seconds = 4 * 60;
+      let seconds = 0.5 * 60;
       const timerElement = document.getElementById('timer');
       timerElement.classList.remove('animate-pulse');
       
@@ -941,7 +941,8 @@ button.bg-indigo-100:hover {
         seconds--;
         if (seconds < 0) {
           clearInterval(timerInterval);
-          showNotification('時間到！比賽結束', 'error');
+          // alert('時間到！比賽結束');
+          // showNotification('時間到！比賽結束', 'error');
           endGame();
         }
       }, 1000);
