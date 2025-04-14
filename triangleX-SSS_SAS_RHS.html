@@ -467,6 +467,7 @@ button.bg-indigo-100:hover {
           document.getElementById('wrongA').innerText = wrongA;
           wrongB = 0;
           document.getElementById('wrongB').innerText = wrongB;
+          resetGame();
           startGame();
         } else if (wrongB === 3) {
           alert("玩家A獲勝, 玩家B連答錯三次");
@@ -478,6 +479,7 @@ button.bg-indigo-100:hover {
           document.getElementById('wrongA').innerText = wrongA;
           wrongB = 0;
           document.getElementById('wrongB').innerText = wrongB;
+          resetGame();
           startGame();
         }
         // showNotification(`玩家 ${player} 答錯了！正確答案是 ${correct}`, 'error');
