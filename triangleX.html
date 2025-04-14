@@ -872,7 +872,7 @@
         clearInterval(timerInterval);
       }
       
-      let seconds = 3.5 * 60; // 3分鐘30秒
+      let seconds = 3.5 * 60; // 4分鐘
       const timerElement = document.getElementById('timer');
       timerElement.classList.remove('animate-pulse');
       
@@ -914,7 +914,7 @@
       document.getElementById('scoreB').innerText = scoreB;
       document.getElementById('wrongA').innerText = wrongA;
       document.getElementById('wrongB').innerText = wrongB;
-      
+      document.getElementById('timer').innerText = "03:30";
       document.getElementById('resultPage').classList.add('hidden');
       
       document.querySelectorAll('body > div:not(#resultPage)').forEach(div => div.classList.remove('hidden'));
