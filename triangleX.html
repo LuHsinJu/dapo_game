@@ -168,7 +168,7 @@
   </div>
   <div class="text-center bg-white rounded-lg shadow-md p-4 w-full max-w-7xl">
     <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800" style="font-size: 25px;"></span></div>
-    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600" style="font-size: 20px;">04:00</span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600" style="font-size: 20px;">03:30</span></div>
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-7xl">
     <!-- 玩家 A 區 -->
@@ -872,7 +872,7 @@
         clearInterval(timerInterval);
       }
       
-      let seconds = 2 * 60; // 4分鐘
+      let seconds = 3.5 * 60; // 3分鐘30秒
       const timerElement = document.getElementById('timer');
       timerElement.classList.remove('animate-pulse');
       
