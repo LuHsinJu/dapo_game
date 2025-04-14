@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRIANGLE X 全等召喚</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f1527 0%, #1a1033 100%);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%232d3d64' fill-opacity='0.1'%3E%3Cpath opacity='1' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    @keyframes rgbAnimation {
+      0% { 
+        color: red; 
+        text-shadow: 0 0 0 red, 0 0 10px orange, 0 0 20px yellow, 0 0 30px green, 0 0 40px blue, 0 0 50px indigo, 0 0 60px violet; 
+      }
+      14% { 
+        color: orange; 
+        text-shadow: 0 0 0 orange, 0 0 10px yellow, 0 0 20px green, 0 0 30px blue, 0 0 40px indigo, 0 0 50px violet, 0 0 60px red; 
+      }
+      28% { 
+        color: yellow; 
+        text-shadow: 0 0 0 yellow, 0 0 10px green, 0 0 20px blue, 0 0 30px indigo, 0 0 40px violet, 0 0 50px red, 0 0 60px orange; 
+      }
+      42% { 
+        color: green; 
+        text-shadow: 0 0 0 green, 0 0 10px blue, 0 0 20px indigo, 0 0 30px violet, 0 0 40px red, 0 0 50px orange, 0 0 60px yellow; 
+      }
+      57% { 
+        color: blue; 
+        text-shadow: 0 0 0 blue, 0 0 10px indigo, 0 0 20px violet, 0 0 30px red, 0 0 40px orange, 0 0 50px yellow, 0 0 60px green; 
+      }
+      71% { 
+        color: indigo; 
+        text-shadow: 0 0 0 indigo, 0 0 10px violet, 0 0 20px red, 0 0 30px orange, 0 0 40px yellow, 0 0 50px green, 0 0 60px blue; 
+      }
+      85% { 
+        color: violet; 
+        text-shadow: 0 0 0 violet, 0 0 10px red, 0 0 20px orange, 0 0 30px yellow, 0 0 40px green, 0 0 50px blue, 0 0 60px indigo; 
+      }
+      100% { 
+        color: red; 
+        text-shadow: 0 0 0 red, 0 0 10px orange, 0 0 20px yellow, 0 0 30px green, 0 0 40px blue, 0 0 50px indigo, 0 0 60px violet; 
+      }
+    }
+  
+    .rgb-text {
+      animation: rgbAnimation 5s linear infinite;
+      font-family: 'Audiowide', sans-serif; /* 電競風格字體 */
+      font-weight: bold;
+    }
+
+    /*  */
+
+    /* 卡片和框框元素 */
+.text-center.bg-white.rounded-lg.shadow-md, 
+.bg-white.rounded-lg.shadow-md {
+  background: linear-gradient(135deg, rgba(13, 17, 23, 0.85) 0%, rgba(28, 25, 52, 0.85) 100%);
+  border: 2px solid transparent;
+  border-image: linear-gradient(to right, #ff00cc, #3333ff);
+  border-image-slice: 1;
+  box-shadow: 0 0 15px rgba(123, 97, 255, 0.4), 0 0 30px rgba(76, 0, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: white;
+  clip-path: polygon(
+    0% 10px,     /* 左上切角 */
+    10px 0%,     /* 左上切角 */
+    calc(100% - 10px) 0%,  /* 右上切角 */
+    100% 10px,   /* 右上切角 */
+    100% calc(100% - 10px),  /* 右下切角 */
+    calc(100% - 10px) 100%,  /* 右下切角 */
+    10px 100%,   /* 左下切角 */
+    0% calc(100% - 10px)   /* 左下切角 */
+  );
+}
+
+/* 問題和計時區域 */
+#question, #timer {
+  color: #e2e8f0;
+  text-shadow: 0 0 5px #6366f1;
+}
+
+#timer {
+  color: #ff2d55;
+  text-shadow: 0 0 10px #ff2d55;
+}
+
+/* 三角形畫布背景 */
+canvas.bg-blue-50 {
+  background: linear-gradient(145deg, rgba(10, 14, 32, 0.7) 0%, rgba(20, 30, 60, 0.7) 100%);
+  border: 1px solid #4361ee !important;
+  box-shadow: 0 0 10px rgba(67, 97, 238, 0.3);
+}
+
+/* 按鈕樣式 */
+button.bg-indigo-100 {
+  background: linear-gradient(145deg, #121a36 0%, #2f1a7c 100%);
+  color: white;
+  border: 1px solid #4361ee;
+  text-shadow: 0 0 5px rgba(123, 97, 255, 0.7);
+  transition: all 0.3s ease;
+}
+
+button.bg-indigo-100:hover {
+  background: linear-gradient(145deg, #2f1a7c 0%, #121a36 100%);
+  box-shadow: 0 0 15px rgba(123, 97, 255, 0.7);
+  transform: translateY(-2px);
+}
+
+/* 得分和錯誤計數 */
+#scoreA, #scoreB, #wrongA, #wrongB {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* 額外添加選擇器和發光元素 */
+.player-section::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border: 2px solid transparent;
+  border-image: linear-gradient(45deg, #ff00cc, #3333ff);
+  border-image-slice: 1;
+  filter: blur(8px);
+  z-index: -1;
+}
+  </style>
+  
+</head>
+
+<body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen flex flex-col items-center justify-start p-1 space-y-6 font-sans" style="background: black;">
+  <!-- <div class="text-center bg-white rounded-lg shadow-md p-4 w-full max-w-6xl"> -->
+  <div class="text-center p-1 w-full max-w-6xl"></div>
+    <div class="flex items-center mb-2" style="text-align: center;">
+      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" width="200" height="200" class="mr-3" />
+      <h1 class="text-4xl font-bold text-indigo-700 rgb-text" style="font-size: 48px;">TRIANGLE <span style="font-size: 70px;">X</span> 全等召喚</h1>
+    </div>
+    <!-- <h1 class="text-4xl font-bold mb-2 text-indigo-700"><img src="triangleX.png" alt="logo" width="50" height="50"/>Triangle X 全等召喚</h1> -->
+    <!-- <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800"></span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600">05:00</span></div> -->
+  </div>
+  <div class="text-center bg-white rounded-lg shadow-md p-4 w-full max-w-7xl">
+    <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800" style="font-size: 25px;"></span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600" style="font-size: 20px;">04:00</span></div>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-7xl">
+    <!-- 玩家 A 區 -->
+    <div class="bg-white rounded-lg shadow-md p-4 space-y-3">
+      <!-- <h2 class="text-xl font-bold text-indigo-700 border-b pb-2">玩家 A</h2> -->
+      <div class="text-2xl text-md font-bold text-indigo-700 border-b pb-2" style="color: white;">玩家 A 得分：<span id="scoreA" class="text-indigo-700" style="color: white">0</span> <span style="float: right;">連續錯誤： <span id="wrongA" class="text-red-600 font-bold ">0</span></span></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <canvas id="triangleA1" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△ABC</div> -->
+        </div>
+        <div class="relative">
+          <canvas id="triangleA2" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△DEF</div> -->
+        </div>
+      </div>
+      <div class="text-sm text-gray-700" style="display: none;">已選線索：<div id="logA" class="bg-gray-50 border rounded p-2 h-24 overflow-y-auto whitespace-pre-line text-sm"></div></div>
+      
+      <!-- 玩家A作答區 -->
+      <div class="bg-gray-50 rounded-lg p-3 mt-2">
+        <div class="mb-2 font-bold text-indigo-800">請選擇三角形全等的依據：</div>
+        <div class="flex flex-wrap justify-center gap-2 mb-2">
+        <!-- <div class="grid grid-cols-6 justify-center gap-2 mb-2"> -->
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'SSS')">SSS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'SAS')">SAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'ASA')">ASA</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'AAS')">AAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'RHS')">RHS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('A', 'NOT')">不一定</button>
+        </div>
+      </div>
+      
+      <div class="text-sm" id="statusA" style="display: none;">準備中...</div>
+    </div>
+
+    <!-- 玩家 B 區 -->
+    <div class="bg-white rounded-lg shadow-md p-4 space-y-3">
+      <!-- <h2 class="text-xl font-bold text-indigo-700 border-b pb-2">玩家 B</h2> -->
+      <div class="text-2xl text-md font-bold text-indigo-700 border-b pb-2" style="color: white">玩家 B 得分：<span id="scoreB" class="text-indigo-700" style="color: white">0</span><span style="float: right;">連續錯誤： <span id="wrongB" class="text-red-600 font-bold ">0</span></span></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <canvas id="triangleB1" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△ABC</div> -->
+        </div>
+        <div class="relative">
+          <canvas id="triangleB2" width="180" height="180" class="bg-blue-50 border border-blue-200 rounded cursor-pointer w-full"></canvas>
+          <!-- <div class="absolute top-0 left-0 bg-indigo-700 text-white text-xs px-2 py-1 rounded-tl">△DEF</div> -->
+        </div>
+      </div>
+      <div class="text-sm text-gray-700" style="display: none;">已選線索：<div id="logB" class="bg-gray-50 border rounded p-2 h-24 overflow-y-auto whitespace-pre-line text-sm"></div></div>
+      
+      <!-- 玩家B作答區 -->
+      <div class="bg-gray-50 rounded-lg p-3 mt-2">
+        <div class="mb-2 font-bold text-indigo-800">請選擇三角形全等的依據：</div>
+        <div class="flex flex-wrap justify-center gap-2 mb-2">
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'SSS')">SSS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'SAS')">SAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'ASA')">ASA</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'AAS')">AAS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'RHS')">RHS</button>
+          <button class="bg-indigo-100 hover:bg-indigo-300 px-5 py-3 rounded shadow transition-colors text-sm" style="font-size:22px;" onclick="submitAnswer('B', 'NOT')">不一定</button>
+        </div>
+      </div>
+      
+      
+      <div class="text-sm" id="statusB" style="display: none;">準備中...</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-md p-4 w-full max-w-7xl mt-4">
+    <div class="text-sm mb-2 font-bold">全等條件說明：</div>
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs text-gray-600" style="color: white">
+      <div><span class="font-bold">SSS</span>：三邊對應相等</div>
+      <div><span class="font-bold">SAS</span>：兩邊及其夾角對應相等</div>
+      <div><span class="font-bold">ASA</span>：兩角及其夾邊對應相等</div>
+      <div><span class="font-bold">AAS</span>：兩角及一非夾邊對應相等</div>
+      <div><span class="font-bold">RHS</span>：直角、斜邊及一股對應相等</div>
+    </div>
+    <div class="mt-2 text-xs text-indigo-800 font-semibold" style="color: white">操作提示：點擊頂點選擇角度，點擊邊選擇邊長</div>
+  </div>
+
+  <script>
+    const questions = [
+      // 不一定全等 AAA
+      // { known: '∠A=∠D, ∠B=∠E, ∠C=∠F', correct: 'NOT', shape: "general" },
+      // SSS 全等
+      { known: 'AB=DE, BC=EF, AC=DF', correct: 'SSS', shape: "general" },
+      { known: 'AB=DE, AC=DF, BC=EF', correct: 'SSS', shape: "general" },
+      { known: 'BC=EF, AB=DE, AC=DF', correct: 'SSS', shape: "general" },
+      { known: 'BC=EF, AC=DF, AB=DE', correct: 'SSS', shape: "general" },
+      { known: 'AC=DF, AB=DE, BC=EF', correct: 'SSS', shape: "general" },
+      { known: 'AC=DF, BC=EF, AB=DE', correct: 'SSS', shape: "general" },
+      
+      // { known: 'AB=DE, BC=EF, AC=DF', correct: 'SSS', shape: "RHS" },
+      // { known: 'AB=DE, AC=DF, BC=EF', correct: 'SSS', shape: "RHS" },
+      // { known: 'BC=EF, AB=DE, AC=DF', correct: 'SSS', shape: "RHS" },
+      // { known: 'BC=EF, AC=DF, AB=DE', correct: 'SSS', shape: "RHS" },
+      // { known: 'AC=DF, AB=DE, BC=EF', correct: 'SSS', shape: "RHS" },
+      // { known: 'AC=DF, BC=EF, AB=DE', correct: 'SSS', shape: "RHS" },
+
+      // SAS 全等
+      { known: '∠A=∠D, AB=DE, AC=DF', correct: 'SAS', shape: "general" },
+      { known: '∠A=∠D, AC=DF, AB=DE', correct: 'SAS', shape: "general" },
+      { known: 'AB=DE, ∠A=∠D, AC=DF', correct: 'SAS', shape: "general" },
+      { known: 'AB=DE, AC=DF, ∠A=∠D', correct: 'SAS', shape: "general" },
+      { known: 'AC=DF, ∠A=∠D, AB=DE', correct: 'SAS', shape: "general" },
+      { known: 'AC=DF, AB=DE, ∠A=∠D', correct: 'SAS', shape: "general" },
+
+      // { known: '∠A=∠D 為直角, AB=DE, AC=DF', correct: 'SAS', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, AC=DF, AB=DE', correct: 'SAS', shape: 'RHS' },
+      // { known: 'AB=DE, ∠A=∠D 為直角, AC=DF', correct: 'SAS', shape: 'RHS' },
+      // { known: 'AB=DE, AC=DF, ∠A=∠D 為直角', correct: 'SAS', shape: 'RHS' },
+      // { known: 'AC=DF, ∠A=∠D 為直角, AB=DE', correct: 'SAS', shape: 'RHS' },
+      // { known: 'AC=DF, AB=DE, ∠A=∠D 為直角', correct: 'SAS', shape: 'RHS' },
+
+      { known: '∠B=∠E, AB=DE, BC=EF', correct: 'SAS', shape: "general" },
+      { known: '∠B=∠E, BC=EF, AB=DE', correct: 'SAS', shape: "general" },
+      { known: 'AB=DE, ∠B=∠E, BC=EF', correct: 'SAS', shape: "general" },
+      { known: 'AB=DE, BC=EF, ∠B=∠E', correct: 'SAS', shape: "general" },
+      { known: 'BC=EF, ∠B=∠E, AB=DE', correct: 'SAS', shape: "general" },
+      { known: 'BC=EF, AB=DE, ∠B=∠E', correct: 'SAS', shape: "general" },
+
+      { known: '∠C=∠F, BC=EF, AC=DF', correct: 'SAS', shape: "general" },
+      { known: '∠C=∠F, AC=DF, BC=EF', correct: 'SAS', shape: "general" },
+      { known: 'BC=EF, ∠C=∠F, AC=DF', correct: 'SAS', shape: "general" },
+      { known: 'BC=EF, AC=DF, ∠C=∠F', correct: 'SAS', shape: "general" },
+      { known: 'AC=DF, ∠C=∠F, BC=EF', correct: 'SAS', shape: "general" },
+      { known: 'AC=DF, BC=EF, ∠C=∠F', correct: 'SAS', shape: "general" },
+
+      // // ASA 全等
+      // { known: '∠A=∠D, ∠B=∠E, AB=DE', correct: 'ASA', shape: "general" },
+      // { known: '∠A=∠D, AB=DE, ∠B=∠E', correct: 'ASA', shape: "general" },
+      // { known: '∠B=∠E, ∠A=∠D, AB=DE', correct: 'ASA', shape: "general" },
+      // { known: '∠B=∠E, AB=DE, ∠A=∠D', correct: 'ASA', shape: "general" },
+      // { known: 'AB=DE, ∠A=∠D, ∠B=∠E', correct: 'ASA', shape: "general" },
+      // { known: 'AB=DE, ∠B=∠E, ∠A=∠D', correct: 'ASA', shape: "general" },
+
+      // { known: '∠A=∠D 為直角, ∠B=∠E, AB=DE', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, AB=DE, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠B=∠E, ∠A=∠D 為直角, AB=DE', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠B=∠E, AB=DE, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AB=DE, ∠A=∠D 為直角, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AB=DE, ∠B=∠E, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+
+      // { known: '∠B=∠E, ∠C=∠F, BC=EF', correct: 'ASA', shape: "general" },
+      // { known: '∠B=∠E, BC=EF, ∠C=∠F', correct: 'ASA', shape: "general" },
+      // { known: '∠C=∠F, ∠B=∠E, BC=EF', correct: 'ASA', shape: "general" },
+      // { known: '∠C=∠F, BC=EF, ∠B=∠E', correct: 'ASA', shape: "general" },
+      // { known: 'BC=EF, ∠B=∠E, ∠C=∠F', correct: 'ASA', shape: "general" },
+      // { known: 'BC=EF, ∠C=∠F, ∠B=∠E', correct: 'ASA', shape: "general" },
+
+      // { known: '∠C=∠F, ∠A=∠D, AC=DF', correct: 'ASA', shape: "general" },
+      // { known: '∠C=∠F, AC=DF, ∠A=∠D', correct: 'ASA', shape: "general" },
+      // { known: '∠A=∠D, ∠C=∠F, AC=DF', correct: 'ASA', shape: "general" },
+      // { known: '∠A=∠D, AC=DF, ∠C=∠F', correct: 'ASA', shape: "general" },
+      // { known: 'AC=DF, ∠C=∠F, ∠A=∠D', correct: 'ASA', shape: "general" },
+      // { known: 'AC=DF, ∠A=∠D, ∠C=∠F', correct: 'ASA', shape: "general" },
+
+      // { known: '∠C=∠F, ∠A=∠D 為直角, AC=DF', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠C=∠F, AC=DF, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, ∠C=∠F, AC=DF', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, AC=DF, ∠C=∠F', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AC=DF, ∠C=∠F, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AC=DF, ∠A=∠D 為直角, ∠C=∠F', correct: 'ASA', shape: 'RHS' },
+
+      // // AAS 全等
+      // { known: '∠A=∠D, ∠B=∠E, BC=EF', correct: 'AAS', shape: "general" },
+      // { known: '∠A=∠D, BC=EF, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, ∠A=∠D, BC=EF', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, BC=EF, ∠A=∠D', correct: 'AAS', shape: "general" },
+      // { known: 'BC=EF, ∠A=∠D, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: 'BC=EF, ∠B=∠E, ∠A=∠D', correct: 'AAS', shape: "general" },
+
+      // { known: '∠A=∠D, ∠B=∠E, AC=DF', correct: 'AAS', shape: "general" },
+      // { known: '∠A=∠D, AC=DF, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, ∠A=∠D, AC=DF', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, AC=DF, ∠A=∠D', correct: 'AAS', shape: "general" },
+      // { known: 'AC=DF, ∠A=∠D, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: 'AC=DF, ∠B=∠E, ∠A=∠D', correct: 'AAS', shape: "general" },
+
+      // { known: '∠B=∠E, ∠C=∠F, AB=DE', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, AB=DE, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, ∠B=∠E, AB=DE', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, AB=DE, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: 'AB=DE, ∠B=∠E, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: 'AB=DE, ∠C=∠F, ∠B=∠E', correct: 'AAS', shape: "general" },
+
+      // { known: '∠B=∠E, ∠C=∠F, AC=DF', correct: 'AAS', shape: "general" },
+      // { known: '∠B=∠E, AC=DF, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, ∠B=∠E, AC=DF', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, AC=DF, ∠B=∠E', correct: 'AAS', shape: "general" },
+      // { known: 'AC=DF, ∠B=∠E, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: 'AC=DF, ∠C=∠F, ∠B=∠E', correct: 'AAS', shape: "general" },
+
+      // { known: '∠A=∠D, ∠C=∠F, AB=DE', correct: 'AAS', shape: "general" },
+      // { known: '∠A=∠D, AB=DE, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, ∠A=∠D, AB=DE', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, AB=DE, ∠A=∠D', correct: 'AAS', shape: "general" },
+      // { known: 'AB=DE, ∠A=∠D, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: 'AB=DE, ∠C=∠F, ∠A=∠D', correct: 'AAS', shape: "general" },
+
+      // { known: '∠A=∠D, ∠C=∠F, BC=EF', correct: 'AAS', shape: "general" },
+      // { known: '∠A=∠D, BC=EF, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, ∠A=∠D, BC=EF', correct: 'AAS', shape: "general" },
+      // { known: '∠C=∠F, BC=EF, ∠A=∠D', correct: 'AAS', shape: "general" },
+      // { known: 'BC=EF, ∠A=∠D, ∠C=∠F', correct: 'AAS', shape: "general" },
+      // { known: 'BC=EF, ∠C=∠F, ∠A=∠D', correct: 'AAS', shape: "general" },
+
+      // RHS 全等
+      { known: '∠A=∠D 為直角, AB=DE, BC=EF', correct: 'RHS', shape: "RHS" },
+      { known: '∠A=∠D 為直角, BC=EF, AB=DE', correct: 'RHS', shape: "RHS" },
+      { known: 'AB=DE, ∠A=∠D 為直角, BC=EF', correct: 'RHS', shape: "RHS" },
+      { known: 'AB=DE, BC=EF, ∠A=∠D 為直角', correct: 'RHS', shape: "RHS" },
+      { known: 'BC=EF, ∠A=∠D 為直角, AB=DE', correct: 'RHS', shape: "RHS" },
+      { known: 'BC=EF, AB=DE, ∠A=∠D 為直角', correct: 'RHS', shape: "RHS" },
+
+      { known: '∠A=∠D 為直角, AC=DF, BC=EF', correct: 'RHS', shape: "RHS" },
+      { known: '∠A=∠D 為直角, BC=EF, AC=DF', correct: 'RHS', shape: "RHS" },
+      { known: 'AC=DF, ∠A=∠D 為直角, BC=EF', correct: 'RHS', shape: "RHS" },
+      { known: 'AC=DF, BC=EF, ∠A=∠D 為直角', correct: 'RHS', shape: "RHS" },
+      { known: 'BC=EF, ∠A=∠D 為直角, AC=DF', correct: 'RHS', shape: "RHS" },
+      { known: 'BC=EF, AC=DF, ∠A=∠D 為直角', correct: 'RHS', shape: "RHS" }
+    ];
+
+    let scoreA = 0;
+    let scoreB = 0;
+    let wrongA = 0;
+    let wrongB = 0;
+    let currentQuestionIndex = Math.floor(Math.random() * questions.length);
+    let playerAnswers = { 'A': null, 'B': null };
+    let selectedEdges = {
+      triangleA1: {},
+      triangleA2: {},
+      triangleB1: {},
+      triangleB2: {}
+    };
+    let selectedAngles = {
+      triangleA1: {},
+      triangleA2: {},
+      triangleB1: {},
+      triangleB2: {}
+    };
+    let timerInterval;
+
+    function startGame() {
+      document.getElementById('scoreA').innerText = scoreA;
+      document.getElementById('scoreB').innerText = scoreB;
+      document.getElementById('wrongA').innerText = wrongA;
+      document.getElementById('wrongB').innerText = wrongB;
+      document.getElementById('logA').innerText = '';
+      document.getElementById('logB').innerText = '';
+      document.getElementById('statusA').innerText = '輪到你作答...';
+      document.getElementById('statusB').innerText = '輪到你作答...';
+      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      playerAnswers = { 'A': null, 'B': null };
+      startTimer();
+      drawTriangles();
+      setupClickHandlers();
+    }
+
+    function submitAnswer(player, ans) {
+      // 如果玩家已經回答過，忽略
+      if (playerAnswers[player] !== null) {
+        showNotification(`玩家 ${player} 已回答過此題`, 'error');
+        return;
+      }
+      
+      // 記錄玩家答案
+      playerAnswers[player] = ans;
+      document.getElementById(`status${player}`).innerText = `已回答：${ans}`;
+      
+      const correct = questions[currentQuestionIndex].correct;
+      
+      // 立即給予玩家得分和反饋
+      if (ans === correct) {
+        // 增加得分
+        if (player === 'A') {
+          scoreA += 1;
+          wrongA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          document.getElementById('wrongA').innerText = wrongA;
+          document.getElementById('scoreA').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('scoreA').classList.remove('text-green-600'), 1000);
+        } else {
+          scoreB += 1;
+          wrongB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          document.getElementById('wrongB').innerText = wrongB;
+          document.getElementById('scoreB').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('scoreB').classList.remove('text-green-600'), 1000);
+        }
+        
+        // 顯示正確答案通知
+        // showNotification(`玩家 ${player} 答對了！`, 'success');
+      } else {
+        if (player === 'A') {
+          wrongA += 1;
+          document.getElementById('wrongA').innerText = wrongA;
+          document.getElementById('wrongA').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('wrongA').classList.remove('text-green-600'), 1000);
+        } else {
+          wrongB += 1;
+          document.getElementById('wrongB').innerText = wrongB;
+          document.getElementById('wrongB').classList.add('text-green-600');
+          setTimeout(() => document.getElementById('wrongB').classList.remove('text-green-600'), 1000);
+        }
+        if (wrongA === 3) {
+          alert("玩家B獲勝, 玩家A連答錯三次");
+          scoreA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          scoreB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          wrongA = 0;
+          document.getElementById('wrongA').innerText = wrongA;
+          wrongB = 0;
+          document.getElementById('wrongB').innerText = wrongB;
+          startGame();
+        } else if (wrongB === 3) {
+          alert("玩家A獲勝, 玩家B連答錯三次");
+          scoreA = 0;
+          document.getElementById('scoreA').innerText = scoreA;
+          scoreB = 0;
+          document.getElementById('scoreB').innerText = scoreB;
+          wrongA = 0;
+          document.getElementById('wrongA').innerText = wrongA;
+          wrongB = 0;
+          document.getElementById('wrongB').innerText = wrongB;
+          startGame();
+        }
+        // showNotification(`玩家 ${player} 答錯了！正確答案是 ${correct}`, 'error');
+      }
+      
+      // 檢查是否雙方都已作答
+      checkBothPlayersAnswered();
+    }
+    
+    function checkBothPlayersAnswered() {
+      // 如果任一玩家已作答，則進入下一題
+      if (playerAnswers['A'] !== null || playerAnswers['B'] !== null) {
+        setTimeout(() => {
+          resetGame();
+        }, 0);
+      }
+    }
+
+    function resetGame() {
+      // 清除已選的邊和角
+      selectedEdges = {
+        triangleA1: {},
+        triangleA2: {},
+        triangleB1: {},
+        triangleB2: {}
+      };
+      selectedAngles = {
+        triangleA1: {},
+        triangleA2: {},
+        triangleB1: {},
+        triangleB2: {}
+      };
+      
+      // 切換到新問題
+      // currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+      currentQuestionIndex = Math.floor(Math.random() * questions.length);
+      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      
+      // 清除日誌和狀態
+      document.getElementById('logA').innerText = '';
+      document.getElementById('logB').innerText = '';
+      document.getElementById('statusA').innerText = '輪到你作答...';
+      document.getElementById('statusB').innerText = '輪到你作答...';
+      
+      // 重置玩家答案
+      playerAnswers = { 'A': null, 'B': null };
+      
+      // 重繪三角形
+      drawTriangles();
+    }
+
+    function drawTriangles() {
+      const triangles = [
+        { id: 'triangleA1', labels: ['A', 'B', 'C'] },
+        { id: 'triangleA2', labels: ['D', 'E', 'F'] },
+        { id: 'triangleB1', labels: ['A', 'B', 'C'] },
+        { id: 'triangleB2', labels: ['D', 'E', 'F'] },
+      ];
+      
+      triangles.forEach(tri => {
+        const canvas = document.getElementById(tri.id);
+        canvas.width = canvas.offsetWidth * 0.8;
+        canvas.height = canvas.offsetHeight * 0.8;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 根據不同問題略微調整三角形形狀
+        let points;
+        if (questions[currentQuestionIndex].shape === 'RHS') {
+          // 直角三角形
+          points = [
+            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+            { x: 30, y: 30, label: tri.labels[2] }
+          ];
+        } else {
+          // 普通三角形
+          points = [
+            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+            { x: canvas.width/2, y: 30, label: tri.labels[2] }
+          ];
+        }
+        
+        // 計算每個角的角度信息
+        const angles = [
+          {
+            point: points[0],
+            label: `∠${tri.labels[0]}`,
+            adjacent: [points[2], points[1]]
+          },
+          {
+            point: points[1],
+            label: `∠${tri.labels[1]}`,
+            adjacent: [points[0], points[2]]
+          },
+          {
+            point: points[2],
+            label: `∠${tri.labels[2]}`,
+            adjacent: [points[1], points[0]]
+          }
+        ];
+
+        // 存儲三角形頂點和邊的信息
+        canvas.triangleData = {
+          points: points,
+          angles: angles,
+          edges: [
+            { 
+              points: [points[0], points[1]], 
+              label: points[0].label + points[1].label,
+              midpoint: { x: (points[0].x + points[1].x)/2, y: (points[0].y + points[1].y)/2 }
+            },
+            { 
+              points: [points[1], points[2]], 
+              label: points[1].label + points[2].label,
+              midpoint: { x: (points[1].x + points[2].x)/2, y: (points[1].y + points[2].y)/2 }
+            },
+            { 
+              points: [points[2], points[0]], 
+              label: points[0].label + points[2].label,
+              midpoint: { x: (points[2].x + points[0].x)/2, y: (points[2].y + points[0].y)/2 }
+            }
+          ]
+        };
+        
+        // 繪製三角形
+        drawTriangle(ctx, canvas.triangleData, tri.id);
+      });
+    }
+    
+    function drawTriangle(ctx, triangleData, canvasId) {
+      const { points, edges, angles } = triangleData;
+      // console.log(triangleData)
+      // 清除畫布
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      
+      // 為不同邊定義不同的顏色
+      const edgeColors = {
+        'AB': 'blue', // 紫藍色 (indigo)
+        'BC': '#10B981', // 綠色 (emerald)
+        'AC': '#FFA500', // 橙色 (amber)
+        'DE': '#6366F1', // 紫藍色 (indigo)
+        'EF': '#10B981', // 綠色 (emerald)
+        'DF': '#FFA500', // 橙色 (amber)
+        // 如果有其他的邊，可以在這裡添加更多顏色
+      };
+      
+      // 繪製三角形的邊
+      edges.forEach(edge => {
+        ctx.beginPath();
+        ctx.moveTo(edge.points[0].x, edge.points[0].y);
+        ctx.lineTo(edge.points[1].x, edge.points[1].y);
+        
+        // 檢查這條邊是否被選中，如果是則改變顏色
+        if (selectedEdges[canvasId] && selectedEdges[canvasId][edge.label]) {
+          // 根據邊的標籤選擇顏色
+          ctx.strokeStyle = edgeColors[edge.label] || '#6366F1'; // 如果找不到對應顏色，使用默認藍色
+          ctx.lineWidth = 3;
+        } else {
+          ctx.strokeStyle = 'white';
+          // ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1.5;
+        }
+        
+        ctx.stroke();
+        
+        // 在邊的中間顯示標籤
+        const color = edgeColors[edge.label] || '#6366F1';
+        ctx.fillStyle = `${color}33`; // 加上33表示20%透明度
+        // const textWidth = ctx.measureText(edge.label).width;
+        // ctx.fillRect(edge.midpoint.x - textWidth/2 - 2, edge.midpoint.y - 8, textWidth + 4, 16);
+        
+        ctx.fillStyle = selectedEdges[canvasId] && selectedEdges[canvasId][edge.label] ? color : '#6366F1';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        // ctx.fillText(edge.label, edge.midpoint.x, edge.midpoint.y + 4);
+      });
+      
+      // 繪製角度標示
+      angles.forEach(angle => {
+        // 計算角度的兩條鄰邊的向量
+        const v1 = {
+          x: angle.adjacent[0].x - angle.point.x,
+          y: angle.adjacent[0].y - angle.point.y
+        };
+        const v2 = {
+          x: angle.adjacent[1].x - angle.point.x,
+          y: angle.adjacent[1].y - angle.point.y
+        };
+        
+        // 計算單位向量
+        const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+        const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+        
+        const u1 = {
+          x: v1.x / len1,
+          y: v1.y / len1
+        };
+        const u2 = {
+          x: v2.x / len2,
+          y: v2.y / len2
+        };
+        
+        // 計算這個角的角度
+        const dot = u1.x * u2.x + u1.y * u2.y;
+        const angleRad = Math.acos(Math.max(-1, Math.min(1, dot)));
+        
+        // 繪製角度弧線
+        // 首先計算兩個向量的角度
+        const angle1 = Math.atan2(v1.y, v1.x);
+        const angle2 = Math.atan2(v2.y, v2.x);
+        
+        // 決定是順時針還是逆時針畫弧
+        let startAngle = angle1;
+        let endAngle = angle2;
+        
+        // 確保是沿著最短的路徑畫弧
+        if (endAngle < startAngle) endAngle += 2 * Math.PI;
+        
+        // 為不同角度定義顏色
+        const angleColors = {
+          '∠A': '#EF4444', // 紅色 (red)
+          '∠B': '#8B5CF6', // 紫色 (violet)
+          '∠C': '#EC4899', // 粉紅色 (pink)
+          '∠D': '#EF4444', // 紅色 (red)
+          '∠E': '#8B5CF6', // 紫色 (violet)
+          '∠F': '#EC4899'  // 粉紅色 (pink)
+        };
+        
+        // 檢查這個角是否被選中
+        if (selectedAngles[canvasId] && selectedAngles[canvasId][angle.label]) {
+          const color = angleColors[angle.label] || '#6366F1';
+          
+          // 如果角度被選中，繪製填充的扇形
+          const radius = 18;
+          ctx.beginPath();
+          ctx.moveTo(angle.point.x, angle.point.y);
+          ctx.arc(angle.point.x, angle.point.y, radius, startAngle, endAngle);
+          ctx.closePath();
+          ctx.fillStyle = `${color}33`; // 添加透明度
+          ctx.fill();
+          
+          // 繪製角度弧線
+          ctx.beginPath();
+          ctx.arc(angle.point.x, angle.point.y, radius, startAngle, endAngle);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+      
+      // 繪製頂點和標籤
+      points.forEach((point, idx) => {
+        // 繪製點
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        
+        // 為不同頂點定義顏色
+        const vertexColors = {
+          'A': '#EF4444', // 紅色 (red)
+          'B': '#8B5CF6', // 紫色 (violet)
+          'C': '#EC4899', // 粉紅色 (pink)
+          'D': '#EF4444', // 紅色 (red)
+          'E': '#8B5CF6', // 紫色 (violet)
+          'F': '#EC4899'  // 粉紅色 (pink)
+        };
+        
+        // 如果這個點對應的角度被選中，改變顏色
+        const angleLabel = `∠${point.label}`;
+        if (selectedAngles[canvasId] && selectedAngles[canvasId][angleLabel]) {
+          ctx.fillStyle = vertexColors[point.label] || '#6366F1'; // 選中時的顏色
+        } else {
+          ctx.fillStyle = '#4B5563'; // 未選中時的顏色
+        }
+        
+        ctx.fill();
+        
+        // 繪製標籤
+        // ctx.fillStyle = '#000';
+        ctx.fillStyle = 'white';
+        ctx.font = '17px sans-serif';
+        ctx.textAlign = 'center';
+        if (point.label === 'C' || point.label === 'F') ctx.fillText(point.label, point.x, point.y - 10);
+        else ctx.fillText(point.label, point.x, point.y +20);
+      });
+    }
+
+    function setupClickHandlers() {
+      const playerMapping = {
+        triangleA1: 'A',
+        triangleA2: 'A',
+        triangleB1: 'B',
+        triangleB2: 'B'
+      };
+      
+      const logs = {
+        triangleA1: document.getElementById('logA'),
+        triangleA2: document.getElementById('logA'),
+        triangleB1: document.getElementById('logB'),
+        triangleB2: document.getElementById('logB')
+      };
+      
+      Object.keys(logs).forEach(id => {
+        const canvas = document.getElementById(id);
+        
+        canvas.addEventListener('click', e => {
+          // 獲取此三角形對應的玩家
+          const player = playerMapping[id];
+          
+          // 檢查此玩家是否已經提交答案
+          if (playerAnswers[player] !== null) {
+            showNotification(`玩家 ${player} 已作答，等待下一題`, 'error');
+            return;
+          }
+          
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+          const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+          
+          // 獲取三角形數據
+          const triangleData = canvas.triangleData;
+          if (!triangleData) return;
+          
+          // 首先檢查是否點擊了頂點（角度）
+          let clickedOnVertex = false;
+          for (const angle of triangleData.angles) {
+            const dist = Math.sqrt(
+              Math.pow(x - angle.point.x, 2) + 
+              Math.pow(y - angle.point.y, 2)
+            );
+            
+            if (dist < 18) { // 如果點擊點足夠靠近頂點
+              clickedOnVertex = true;
+              // 切換這個角的選中狀態
+              selectedAngles[id][angle.label] = !selectedAngles[id][angle.label];
+              
+              // 更新日誌
+              const action = selectedAngles[id][angle.label] ? '選擇' : '取消選擇';
+              // logs[id].innerText += `${action}角度 ${angle.label}\n`;
+              
+              // 重繪三角形
+              const ctx = canvas.getContext('2d');
+              drawTriangle(ctx, triangleData, id);
+              
+              break;
+            }
+          }
+          
+          // 如果沒有點擊頂點，則檢查是否點擊了邊
+          if (!clickedOnVertex) {
+            for (const edge of triangleData.edges) {
+              const dist = distanceToLine(
+                x, y, 
+                edge.points[0].x, edge.points[0].y, 
+                edge.points[1].x, edge.points[1].y
+              );
+              
+              if (dist < 18) { // 如果點擊點足夠靠近這條線
+                // 切換這條邊的選中狀態
+                selectedEdges[id][edge.label] = !selectedEdges[id][edge.label];
+                
+                // 更新日誌
+                const action = selectedEdges[id][edge.label] ? '選擇' : '取消選擇';
+                // logs[id].innerText += `${action}線段 ${edge.label}\n`;
+                
+                // 重繪三角形
+                const ctx = canvas.getContext('2d');
+                drawTriangle(ctx, triangleData, id);
+                
+                break;
+              }
+            }
+          }
+        });
+      });
+    }
+    
+    // 計算點到線段的距離
+    function distanceToLine(x, y, x1, y1, x2, y2) {
+      const A = x - x1;
+      const B = y - y1;
+      const C = x2 - x1;
+      const D = y2 - y1;
+      
+      const dot = A * C + B * D;
+      const len_sq = C * C + D * D;
+      let param = -1;
+      
+      if (len_sq != 0) param = dot / len_sq;
+      
+      let xx, yy;
+      
+      if (param < 0) {
+        xx = x1;
+        yy = y1;
+      } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+      } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+      }
+      
+      const dx = x - xx;
+      const dy = y - yy;
+      
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function startTimer() {
+      // 清除之前的計時器如果存在
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      let seconds = 4 * 60;
+      const timerElement = document.getElementById('timer');
+      timerElement.classList.remove('animate-pulse');
+      
+      timerInterval = setInterval(() => {
+        const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const sec = String(seconds % 60).padStart(2, '0');
+        timerElement.textContent = `${min}:${sec}`;
+        
+        // 在最後30秒改變顏色
+        if (seconds <= 30) {
+          timerElement.classList.add('animate-pulse');
+        }
+        
+        seconds--;
+        if (seconds < 0) {
+          clearInterval(timerInterval);
+          // alert('時間到！比賽結束');
+          // showNotification('時間到！比賽結束', 'error');
+          endGame();
+        }
+      }, 1000);
+    }
+    
+    function endGame() {
+      // 比賽結束，顯示最終得分
+      const winner = scoreA > scoreB ? 'A' : (scoreB > scoreA ? 'B' : '平手');
+      const message = winner === '平手' ? '比賽結束，雙方平手！' : `比賽結束，玩家 ${winner} 獲勝！`;
+      
+      setTimeout(() => {
+        alert(`${message}\n玩家A：${scoreA}分\n玩家B：${scoreB}分`);
+        // 重置遊戲
+        scoreA = 0;
+        scoreB = 0;
+        startGame();
+      }, 1000);
+    }
+
+    // 確保頁面載入後啟動遊戲
+    window.onload = startGame;
+    
+    // 響應式調整
+    window.addEventListener('resize', drawTriangles);
+  </script>
+</body>
+</html>
