@@ -311,19 +311,19 @@
       { known: 'AC=DF, BC=EF, ∠C=∠F', correct: 'SAS', shape: "general" },
 
       // ASA 全等
-      // { known: '∠A=∠D, ∠B=∠E, AB=DE', correct: 'ASA', shape: "general" },
-      // { known: '∠A=∠D, AB=DE, ∠B=∠E', correct: 'ASA', shape: "general" },
-      // { known: '∠B=∠E, ∠A=∠D, AB=DE', correct: 'ASA', shape: "general" },
-      // { known: '∠B=∠E, AB=DE, ∠A=∠D', correct: 'ASA', shape: "general" },
-      // { known: 'AB=DE, ∠A=∠D, ∠B=∠E', correct: 'ASA', shape: "general" },
-      // { known: 'AB=DE, ∠B=∠E, ∠A=∠D', correct: 'ASA', shape: "general" },
+      { known: '∠A=∠D, ∠B=∠E, AB=DE', correct: 'ASA', shape: "general" },
+      { known: '∠A=∠D, AB=DE, ∠B=∠E', correct: 'ASA', shape: "general" },
+      { known: '∠B=∠E, ∠A=∠D, AB=DE', correct: 'ASA', shape: "general" },
+      { known: '∠B=∠E, AB=DE, ∠A=∠D', correct: 'ASA', shape: "general" },
+      { known: 'AB=DE, ∠A=∠D, ∠B=∠E', correct: 'ASA', shape: "general" },
+      { known: 'AB=DE, ∠B=∠E, ∠A=∠D', correct: 'ASA', shape: "general" },
 
-      { known: '∠A=∠D 為直角, ∠B=∠E, AB=DE', correct: 'ASA', shape: 'RHS' },
-      { known: '∠A=∠D 為直角, AB=DE, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
-      { known: '∠B=∠E, ∠A=∠D 為直角, AB=DE', correct: 'ASA', shape: 'RHS' },
-      { known: '∠B=∠E, AB=DE, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
-      { known: 'AB=DE, ∠A=∠D 為直角, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
-      { known: 'AB=DE, ∠B=∠E, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, ∠B=∠E, AB=DE', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠A=∠D 為直角, AB=DE, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠B=∠E, ∠A=∠D 為直角, AB=DE', correct: 'ASA', shape: 'RHS' },
+      // { known: '∠B=∠E, AB=DE, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AB=DE, ∠A=∠D 為直角, ∠B=∠E', correct: 'ASA', shape: 'RHS' },
+      // { known: 'AB=DE, ∠B=∠E, ∠A=∠D 為直角', correct: 'ASA', shape: 'RHS' },
 
       { known: '∠B=∠E, ∠C=∠F, BC=EF', correct: 'ASA', shape: "general" },
       { known: '∠B=∠E, BC=EF, ∠C=∠F', correct: 'ASA', shape: "general" },
@@ -405,11 +405,31 @@
       { known: 'BC=EF, AC=DF, ∠A=∠D 為直角', correct: 'RHS', shape: "RHS" }
     ];
 
+    const easyquestions = [
+      // SSS
+      { known: 'AB=DE, BC=EF, AC=DF', correct: 'SSS', shape: "general" }, 
+      // SAS
+      { known: 'AB=DE, ∠A=∠D, AC=DF', correct: 'SAS', shape: "general" },
+      { known: 'AB=DE, ∠B=∠E, BC=EF', correct: 'SAS', shape: "general" },
+      { known: 'AC=DF, ∠C=∠F, BC=EF', correct: 'SAS', shape: "general" },
+      // ASA
+      { known: '∠A=∠D, AB=DE, ∠B=∠E', correct: 'ASA', shape: "general" },
+      { known: '∠B=∠E, BC=EF, ∠C=∠F', correct: 'ASA', shape: "general" },
+      { known: '∠A=∠D, AC=DF, ∠C=∠F', correct: 'ASA', shape: "general" },
+      // AAS
+      { known: '∠A=∠D, ∠B=∠E, BC=EF', correct: 'AAS', shape: "general" },
+      { known: '∠B=∠E, ∠C=∠F, AB=DE', correct: 'AAS', shape: "general" },
+      { known: '∠A=∠D, ∠C=∠F, AB=DE', correct: 'AAS', shape: "general" },
+      // RHS
+      { known: '∠A=∠D 為直角, AB=DE, BC=EF', correct: 'RHS', shape: "RHS" },
+      { known: '∠A=∠D 為直角, AC=DF, BC=EF', correct: 'RHS', shape: "RHS" }
+    ];
     let scoreA = 0;
     let scoreB = 0;
     let wrongA = 0;
     let wrongB = 0;
-    let currentQuestionIndex = Math.floor(Math.random() * questions.length);
+    let easyquestions_idx = 0;
+    let currentQuestionIndex = Math.floor(Math.random() * easyquestions.length);
     let playerAnswers = { 'A': null, 'B': null };
     let selectedEdges = {
       triangleA1: {},
@@ -439,8 +459,9 @@
       wrongA = 0;
       wrongB = 0;
       shuffle(questions);
-      console.log(questions); // 輸出打亂後的陣列
-      currentQuestionIndex = Math.floor(Math.random() * questions.length);
+      shuffle(easyquestions);
+      // console.log(questions); // 輸出打亂後的陣列
+      currentQuestionIndex = 0; //Math.floor(Math.random() * easyquestions.length);
       playerAnswers = { 'A': null, 'B': null };
       selectedEdges = {
         triangleA1: {},
@@ -462,7 +483,7 @@
       document.getElementById('logB').innerText = '';
       document.getElementById('statusA').innerText = '輪到你作答...';
       document.getElementById('statusB').innerText = '輪到你作答...';
-      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      document.getElementById('question').innerText = easyquestions[currentQuestionIndex].known;
       startTimer();
       drawTriangles();
       setupClickHandlers();
@@ -475,8 +496,11 @@
       
       playerAnswers[player] = ans;
       document.getElementById(`status${player}`).innerText = `已回答：${ans}`;
-      
-      const correct = questions[currentQuestionIndex].correct;
+
+      let correct = questions[currentQuestionIndex].correct;
+      if (easyquestions_idx <= 10) {
+        correct = easyquestions[currentQuestionIndex].correct;
+      }
       
       if (ans === correct) {
         if (player === 'A') {
@@ -539,10 +563,14 @@
         triangleB1: {},
         triangleB2: {}
       };
-      
-      currentQuestionIndex = Math.floor(Math.random() * questions.length);
-      document.getElementById('question').innerText = questions[currentQuestionIndex].known;
-      
+      easyquestions_idx += 1;
+      if (easyquestions_idx <= 10) {
+        currentQuestionIndex = easyquestions_idx;// Math.floor(Math.random() * easyquestions.length);
+        document.getElementById('question').innerText = easyquestions[currentQuestionIndex].known;
+      } else {
+        currentQuestionIndex = Math.floor(Math.random() * questions.length);
+        document.getElementById('question').innerText = questions[currentQuestionIndex].known;
+      }
       document.getElementById('logA').innerText = '';
       document.getElementById('logB').innerText = '';
       document.getElementById('statusA').innerText = '輪到你作答...';
@@ -571,19 +599,36 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         let points;
-        if (questions[currentQuestionIndex].shape === 'RHS') {
-          points = [
-            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
-            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
-            { x: 30, y: 30, label: tri.labels[2] }
-          ];
+        if (easyquestions_idx <= 10) {
+          if (easyquestions[currentQuestionIndex].shape === 'RHS') {
+            points = [
+              { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+              { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+              { x: 30, y: 30, label: tri.labels[2] }
+            ];
+          } else {
+            points = [
+              { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+              { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+              { x: canvas.width/2, y: 30, label: tri.labels[2] }
+            ];
+          }
         } else {
-          points = [
-            { x: 30, y: canvas.height - 30, label: tri.labels[0] },
-            { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
-            { x: canvas.width/2, y: 30, label: tri.labels[2] }
-          ];
+          if (questions[currentQuestionIndex].shape === 'RHS') {
+            points = [
+              { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+              { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+              { x: 30, y: 30, label: tri.labels[2] }
+            ];
+          } else {
+            points = [
+              { x: 30, y: canvas.height - 30, label: tri.labels[0] },
+              { x: canvas.width - 30, y: canvas.height - 30, label: tri.labels[1] },
+              { x: canvas.width/2, y: 30, label: tri.labels[2] }
+            ];
+          }
         }
+        
         
         const angles = [
           {
@@ -910,6 +955,7 @@
       scoreB = 0;
       wrongA = 0;
       wrongB = 0;
+      easyquestions_idx = 0;
       document.getElementById('scoreA').innerText = scoreA;
       document.getElementById('scoreB').innerText = scoreB;
       document.getElementById('wrongA').innerText = wrongA;
