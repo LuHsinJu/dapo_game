@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>搶答圈圈叉叉</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      padding-top: 50px;
+    }
+    .player-box {
+      width: 200px;
+      border: 2px solid #ccc;
+      padding: 10px;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      font-size: 48px;
+      text-align: center;
+      line-height: 100px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .disabled {
+      pointer-events: none;
+      background-color: #ddd;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 5px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 5px;
+      padding: 5px 10px;
+    }
+    #status {
+      grid-column: span 3;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="player-box" id="playerO">
+  <h3>玩家 O</h3>
+  <p id="questionO">等待中...</p>
+  <input type="text" id="answerO" disabled>
+  <button onclick="submitAnswer('O')" id="btnO" disabled>送出</button>
+</div>
+
+<div>
+  <div class="board" id="board"></div>
+  <p id="status"></p>
+</div>
+
+<div class="player-box" id="playerX">
+  <h3>玩家 X</h3>
+  <p id="questionX">等待中...</p>
+  <input type="text" id="answerX" disabled>
+  <button onclick="submitAnswer('X')" id="btnX" disabled>送出</button>
+</div>
+
+<script>
+const board = document.getElementById("board");
+const statusText = document.getElementById("status");
+let currentPlayer = "O";
+let gameBoard = Array(9).fill("");
+let gameActive = true;
+let currentIndex = null;
+let currentQuestion = null;
+let answerLocked = false; // 搶答鎖
+
+const mathQuestions = [
+  { q: "5 + 3", a: "8" },
+  { q: "9 - 4", a: "5" },
+  { q: "6 × 7", a: "42" },
+  { q: "12 ÷ 3", a: "4" },
+  { q: "10 + 5", a: "15" },
+  { q: "14 - 6", a: "8" },
+  { q: "3 × 3", a: "9" },
+  { q: "16 ÷ 4", a: "4" },
+];
+
+function createBoard() {
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.dataset.index = i;
+    cell.addEventListener("click", handleCellClick);
+    board.appendChild(cell);
+  }
+}
+
+function handleCellClick(e) {
+  const index = e.target.dataset.index;
+  if (gameBoard[index] !== "" || !gameActive || currentIndex !== null) return;
+
+  currentIndex = index;
+  currentQuestion = mathQuestions[Math.floor(Math.random() * mathQuestions.length)];
+  answerLocked = false;
+
+  showQuestion();
+}
+
+function showQuestion() {
+  const qO = document.getElementById("questionO");
+  const qX = document.getElementById("questionX");
+
+  qO.textContent = currentQuestion.q;
+  qX.textContent = currentQuestion.q;
+
+  ["O", "X"].forEach(p => {
+    document.getElementById(`answer${p}`).disabled = false;
+    document.getElementById(`btn${p}`).disabled = false;
+    document.getElementById(`answer${p}`).value = "";
+  });
+}
+
+function submitAnswer(player) {
+  if (answerLocked) return;
+
+  const input = document.getElementById(`answer${player}`);
+  const answer = input.value.trim();
+
+  if (answer === currentQuestion.a) {
+    answerLocked = true;
+    gameBoard[currentIndex] = player;
+    const cell = document.querySelector(`.cell[data-index='${currentIndex}']`);
+    cell.textContent = player;
+    cell.classList.add("disabled");
+
+    if (checkWinner()) {
+      statusText.textContent = `玩家 ${player} 獲勝！`;
+      gameActive = false;
+    } else if (!gameBoard.includes("")) {
+      statusText.textContent = "平手！";
+      gameActive = false;
+    } else {
+      currentPlayer = player === "O" ? "X" : "O"; // 雖然是搶答，但還是換下一位先點格子
+    }
+
+    clearInputs();
+  } else {
+    alert(`玩家 ${player} 答錯了！`);
+    document.getElementById(`btn${player}`).disabled = true;
+    document.getElementById(`answer${player}`).disabled = true;
+
+    // 若兩方都按送出且錯誤，則進入下一回合
+    const other = player === "O" ? "X" : "O";
+    const otherBtn = document.getElementById(`btn${other}`);
+    if (otherBtn.disabled) {
+      alert("雙方都答錯，換下一輪！");
+      currentPlayer = currentPlayer === "O" ? "X" : "O";
+      clearInputs();
+    }
+  }
+}
+
+function clearInputs() {
+  ["O", "X"].forEach(p => {
+    document.getElementById(`question${p}`).textContent = "等待中...";
+    document.getElementById(`answer${p}`).value = "";
+    document.getElementById(`answer${p}`).disabled = true;
+    document.getElementById(`btn${p}`).disabled = true;
+  });
+  currentIndex = null;
+  currentQuestion = null;
+}
+
+function checkWinner() {
+  const wins = [
+    [0,1,2], [3,4,5], [6,7,8],
+    [0,3,6], [1,4,7], [2,5,8],
+    [0,4,8], [2,4,6]
+  ];
+  return wins.some(([a,b,c]) => {
+    return gameBoard[a] && gameBoard[a] === gameBoard[b] && gameBoard[b] === gameBoard[c];
+  });
+}
+
+createBoard();
+</script>
+
+</body>
+</html>
