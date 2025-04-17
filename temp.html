@@ -2,82 +2,233 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>搶答圈圈叉叉</title>
+  <title>O與X的宿命之戰！</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Microsoft JhengHei', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    
+    h1 {
+      text-align: center;
+      margin: 20px 0 40px 0;
+      color: #3498db;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .game-wrapper {
       display: flex;
       justify-content: center;
       align-items: flex-start;
       gap: 40px;
-      padding-top: 50px;
+      width: 100%;
+      max-width: 1200px;
     }
+    
     .player-box {
-      width: 200px;
-      border: 2px solid #ccc;
-      padding: 10px;
+      width: 400px;
+      border: 2px solid #3498db;
+      padding: 15px;
       border-radius: 10px;
-      background-color: #f9f9f9;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
     }
+    
+    .player-box.active {
+      border-color: #2ecc71;
+      box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+    }
+    
+    .score-display {
+      background-color: #eaf2f8;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
     .board {
       display: grid;
       grid-template-columns: repeat(3, 100px);
-      gap: 5px;
+      gap: 8px;
+      margin-bottom: 20px;
     }
+    
     .cell {
       width: 100px;
       height: 100px;
-      font-size: 48px;
+      font-size: 60px;
       text-align: center;
       line-height: 100px;
-      background-color: #f0f0f0;
-      border: 1px solid #ccc;
+      background-color: #ecf0f1;
+      border-radius: 8px;
+      border: 1px solid #bdc3c7;
       cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    
+    .cell:hover {
+      background-color: #d6eaf8;
+    }
+    
+    .cell.O {
+      color: #3498db;
+    }
+    
+    .cell.X {
+      color: #e74c3c;
+    }
+    
     .disabled {
       pointer-events: none;
-      background-color: #ddd;
+      opacity: 0.9;
     }
+    
     input[type="text"] {
       width: 80%;
-      padding: 5px;
+      padding: 10px;
       font-size: 16px;
+      border: 1px solid #bdc3c7;
+      border-radius: 5px;
+      margin-bottom: 10px;
     }
+    
     button {
-      margin-top: 5px;
-      padding: 5px 10px;
+      padding: 8px 15px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
     }
+    
+    button:hover:not(:disabled) {
+      background-color: #2980b9;
+    }
+    
+    button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+    
     #status {
       grid-column: span 3;
       margin-top: 20px;
-      font-size: 18px;
+      font-size: 20px;
+      text-align: center;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      color: #2c3e50;
+      font-weight: bold;
+      min-height: 24px;
+    }
+    
+    .question-box {
+      background-color: #f9f9f9;
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px dashed #95a5a6;
+      border-radius: 8px;
+      text-align: center;
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .question-box img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      transform-origin: center center;
+    }
+    
+    .control-area {
+      text-align: center;
+    }
+    
+    h3 {
+      text-align: center;
+      margin-top: 0;
+      border-bottom: 2px solid #eaecee;
+      padding-bottom: 10px;
+      color: #34495e;
+    }
+    
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .reset-btn {
+      margin-top: 10px;
+      background-color: #e74c3c;
+      display: none; /* 初始隱藏 */
+    }
+    
+    .reset-btn:hover {
+      background-color: #c0392b;
+    }
+    
+    .reset-btn.visible {
+      display: inline-block;
     }
   </style>
 </head>
 <body>
+<h1>O與X的宿命之戰！</h1>
 
-<div class="player-box" id="playerO">
-  <h3>玩家 O</h3>
-  <p id="questionO">等待中...</p>
-  <input type="text" id="answerO" disabled>
-  <button onclick="submitAnswer('O')" id="btnO" disabled>送出</button>
-</div>
+<div class="game-wrapper">
+  <div class="player-box" id="playerO">
+    <h3>玩家 O</h3>
+    <div class="score-display" id="scoreO">答對題數: 0</div>
+    <div class="question-box" id="questionO">等待中...</div>
+    <div class="control-area">
+      <input type="text" id="answerO" disabled placeholder="輸入答案">
+      <button onclick="submitAnswer('O')" id="btnO" disabled>送出</button>
+    </div>
+  </div>
 
-<div>
-  <div class="board" id="board"></div>
-  <p id="status"></p>
-</div>
+  <div class="game-container">
+    <div class="board" id="board"></div>
+    <p id="status">遊戲開始！玩家O先選擇格子</p>
+    <button onclick="resetGame()" class="reset-btn" id="resetBtn">重新開始</button>
+  </div>
 
-<div class="player-box" id="playerX">
-  <h3>玩家 X</h3>
-  <p id="questionX">等待中...</p>
-  <input type="text" id="answerX" disabled>
-  <button onclick="submitAnswer('X')" id="btnX" disabled>送出</button>
+  <div class="player-box" id="playerX">
+    <h3>玩家 X</h3>
+    <div class="score-display" id="scoreX">答對題數: 0</div>
+    <div class="question-box" id="questionX">等待中...</div>
+    <div class="control-area">
+      <input type="text" id="answerX" disabled placeholder="輸入答案">
+      <button onclick="submitAnswer('X')" id="btnX" disabled>送出</button>
+    </div>
+  </div>
 </div>
 
 <script>
 const board = document.getElementById("board");
 const statusText = document.getElementById("status");
+const resetBtn = document.getElementById("resetBtn");
 let currentPlayer = "O";
 let gameBoard = Array(9).fill("");
 let gameActive = true;
@@ -85,15 +236,28 @@ let currentIndex = null;
 let currentQuestion = null;
 let answerLocked = false; // 搶答鎖
 
+// 計分功能
+let scores = {
+  "O": 0,
+  "X": 0
+};
+
 const mathQuestions = [
-  { q: "5 + 3", a: "8" },
-  { q: "9 - 4", a: "5" },
-  { q: "6 × 7", a: "42" },
-  { q: "12 ÷ 3", a: "4" },
-  { q: "10 + 5", a: "15" },
-  { q: "14 - 6", a: "8" },
-  { q: "3 × 3", a: "9" },
-  { q: "16 ÷ 4", a: "4" },
+//   { q: "5 + 3", a: "8" },
+  {
+    q: `<div style="width: 100%; overflow: hidden;">
+          <img src="https://i.imgur.com/0PO7XyQ.jpeg" style="transform: rotate(0deg); max-height: 500px;"><br>求AEF？
+        </div>
+        `,
+    a: "2"
+  },
+//   { q: "9 - 4", a: "5" },
+//   { q: "6 × 7", a: "42" },
+//   { q: "12 ÷ 3", a: "4" },
+//   { q: "10 + 5", a: "15" },
+//   { q: "14 - 6", a: "8" },
+//   { q: "3 × 3", a: "9" },
+//   { q: "16 ÷ 4", a: "4" },
 ];
 
 function createBoard() {
@@ -104,6 +268,7 @@ function createBoard() {
     cell.addEventListener("click", handleCellClick);
     board.appendChild(cell);
   }
+  updatePlayerBoxStyle();
 }
 
 function handleCellClick(e) {
@@ -121,14 +286,16 @@ function showQuestion() {
   const qO = document.getElementById("questionO");
   const qX = document.getElementById("questionX");
 
-  qO.textContent = currentQuestion.q;
-  qX.textContent = currentQuestion.q;
-
+  qO.innerHTML = currentQuestion.q;
+  qX.innerHTML = currentQuestion.q;
+  
   ["O", "X"].forEach(p => {
     document.getElementById(`answer${p}`).disabled = false;
     document.getElementById(`btn${p}`).disabled = false;
     document.getElementById(`answer${p}`).value = "";
   });
+  
+  statusText.textContent = "搶答時間！";
 }
 
 function submitAnswer(player) {
@@ -143,15 +310,24 @@ function submitAnswer(player) {
     const cell = document.querySelector(`.cell[data-index='${currentIndex}']`);
     cell.textContent = player;
     cell.classList.add("disabled");
+    cell.classList.add(player);
+    
+    // 更新計分
+    scores[player]++;
+    updateScore(player);
 
     if (checkWinner()) {
       statusText.textContent = `玩家 ${player} 獲勝！`;
       gameActive = false;
+      showResetButton();
     } else if (!gameBoard.includes("")) {
       statusText.textContent = "平手！";
       gameActive = false;
+      showResetButton();
     } else {
       currentPlayer = player === "O" ? "X" : "O"; // 雖然是搶答，但還是換下一位先點格子
+      updatePlayerBoxStyle();
+      statusText.textContent = `輪到玩家 ${currentPlayer} 選擇格子`;
     }
 
     clearInputs();
@@ -166,14 +342,20 @@ function submitAnswer(player) {
     if (otherBtn.disabled) {
       alert("雙方都答錯，換下一輪！");
       currentPlayer = currentPlayer === "O" ? "X" : "O";
+      updatePlayerBoxStyle();
+      statusText.textContent = `輪到玩家 ${currentPlayer} 選擇格子`;
       clearInputs();
     }
   }
 }
 
+function updateScore(player) {
+  document.getElementById(`score${player}`).textContent = `答對題數: ${scores[player]}`;
+}
+
 function clearInputs() {
   ["O", "X"].forEach(p => {
-    document.getElementById(`question${p}`).textContent = "等待中...";
+    document.getElementById(`question${p}`).innerHTML = "等待中...";
     document.getElementById(`answer${p}`).value = "";
     document.getElementById(`answer${p}`).disabled = true;
     document.getElementById(`btn${p}`).disabled = true;
@@ -191,6 +373,42 @@ function checkWinner() {
   return wins.some(([a,b,c]) => {
     return gameBoard[a] && gameBoard[a] === gameBoard[b] && gameBoard[b] === gameBoard[c];
   });
+}
+
+function updatePlayerBoxStyle() {
+  document.getElementById("playerO").classList.toggle("active", currentPlayer === "O");
+  document.getElementById("playerX").classList.toggle("active", currentPlayer === "X");
+}
+
+function showResetButton() {
+  resetBtn.classList.add("visible");
+}
+
+function hideResetButton() {
+  resetBtn.classList.remove("visible");
+}
+
+function resetGame() {
+  gameBoard = Array(9).fill("");
+  gameActive = true;
+  currentPlayer = "O";
+  currentIndex = null;
+  currentQuestion = null;
+  answerLocked = false;
+  
+  // 重置棋盤
+  const cells = document.querySelectorAll(".cell");
+  cells.forEach(cell => {
+    cell.textContent = "";
+    cell.classList.remove("disabled", "O", "X");
+  });
+  
+  clearInputs();
+  updatePlayerBoxStyle();
+  statusText.textContent = "遊戲重新開始！玩家O先選擇格子";
+  hideResetButton();
+  
+  // 不重置分數，讓玩家可以進行多輪比賽
 }
 
 createBoard();
