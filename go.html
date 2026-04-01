@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>圍棋自動計目器</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 引入 Babel 以便在瀏覽器中編譯 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useCallback, useRef } = React;
+
+      // 棋盤大小
+      const BOARD_SIZE = 19;
+      const KOMI = 6.5;
+
+      // 方向常數 (上, 下, 左, 右)
+      const DIRECTIONS = [
+        [0, -1], [0, 1], [-1, 0], [1, 0]
+      ];
+
+      // 星位座標 (0-indexed)
+      const STAR_POINTS = [
+        [3, 3], [9, 3], [15, 3],
+        [3, 9], [9, 9], [15, 9],
+        [3, 15], [9, 15], [15, 15]
+      ];
+
+      function GoScorer() {
+        // 棋盤狀態：0 (空), 1 (黑), 2 (白)
+        const [board, setBoard] = useState(() => Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0)));
+        const [turn, setTurn] = useState(1); // 1 = 黑子, 2 = 白子
+        
+        // 模式切換與排盤工具
+        const [mode, setMode] = useState('menu'); // 'menu' 主選單, 'play' 落子, 'setup' 排盤, 'score' 計目
+        const [prevMode, setPrevMode] = useState('play'); // 紀錄進入計目前是 play 還是 setup
+        const [setupTool, setSetupTool] = useState(1); // 排盤工具：1(黑), 2(白), 0(清除)
+        
+        // 遊戲中吃掉的子數 (captures[1] 代表黑方吃掉的白子數量)
+        const [captures, setCaptures] = useState({ 1: 0, 2: 0 });
+        
+        // 計目階段：被標記為死子的座標 Set (格式: "x,y")
+        const [deadStones, setDeadStones] = useState(new Set());
+        
+        // 對弈紀錄與悔棋
+        const [history, setHistory] = useState([]); // 歷史紀錄
+        const [lastMove, setLastMove] = useState(null); // 最後落子座標 {x, y}
+        const [moveRecords, setMoveRecords] = useState([]); // 落子紀錄清單
+        const moveListRef = useRef(null); // 用於自動滾動紀錄列表
+        
+        // --- 自訂確認對話框狀態 ---
+        const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+        
+        const requestConfirm = (message, onConfirm) => {
+          setConfirmDialog({ isOpen: true, message, onConfirm });
+        };
+        
+        const closeConfirm = () => {
+          setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+        };
+
+        // 計算結果
+        const [territoryResult, setTerritoryResult] = useState({
+          points: [], // 每個空交叉點的歸屬 {x, y, owner}
+          blackTerritory: 0,
+          whiteTerritory: 0,
+          blackDeadStones: 0, // 盤面上被標記為死的黑子
+          whiteDeadStones: 0  // 盤面上被標記為死的白子
+        });
+
+        const [message, setMessage] = useState('');
+
+        // 取得相鄰的有效座標
+        const getNeighbors = (x, y) => {
+          return DIRECTIONS.map(([dx, dy]) => [x + dx, y + dy])
+            .filter(([nx, ny]) => nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE);
+        };
+
+        // 尋找相連的同色棋子群，並計算氣數
+        const getGroupInfo = (currentBoard, startX, startY, color) => {
+          let group = [];
+          let liberties = new Set();
+          let visited = new Set();
+          let queue = [[startX, startY]];
+          
+          visited.add(`${startX},${startY}`);
+
+          while (queue.length > 0) {
+            let [cx, cy] = queue.shift();
+            group.push([cx, cy]);
+            
+            let neighbors = getNeighbors(cx, cy);
+            for (let [nx, ny] of neighbors) {
+              if (currentBoard[ny][nx] === 0) {
+                liberties.add(`${nx},${ny}`); // 找到氣
+              } else if (currentBoard[ny][nx] === color && !visited.has(`${nx},${ny}`)) {
+                visited.add(`${nx},${ny}`);
+                queue.push([nx, ny]); // 同色相連，加入群組
+              }
+            }
+          }
+          return { group, liberties: liberties.size };
+        };
+
+        // 處理落子
+        const handlePlayMove = (x, y) => {
+          if (board[y][x] !== 0) return; // 已經有子了
+
+          setMessage('');
+          let newBoard = board.map(row => [...row]);
+          newBoard[y][x] = turn;
+          let opponentColor = turn === 1 ? 2 : 1;
+          let capturedStonesCount = 0;
+
+          // 1. 檢查四周敵方棋子是否被提吃
+          let neighbors = getNeighbors(x, y);
+          for (let [nx, ny] of neighbors) {
+            if (newBoard[ny][nx] === opponentColor) {
+              let opponentGroup = getGroupInfo(newBoard, nx, ny, opponentColor);
+              if (opponentGroup.liberties === 0) {
+                // 提吃
+                opponentGroup.group.forEach(([gx, gy]) => {
+                  newBoard[gy][gx] = 0;
+                  capturedStonesCount++;
+                });
+              }
+            }
+          }
+
+          // 2. 檢查自己是否自殺 (若沒有提吃，且自己沒氣)
+          let myGroup = getGroupInfo(newBoard, x, y, turn);
+          if (myGroup.liberties === 0 && capturedStonesCount === 0) {
+            setMessage('此處為禁手 (無法落子)');
+            return; // 撤銷這步棋
+          }
+
+          // 儲存歷史紀錄 (用於悔棋)
+          setHistory(prev => [...prev, {
+            board: board,
+            turn: turn,
+            captures: { ...captures },
+            lastMove: lastMove
+          }]);
+
+          // 新增落子紀錄 (加上 1 以符合 1-19 座標標示)
+          setMoveRecords(prev => [...prev, {
+            color: turn,
+            x: x + 1,
+            y: y + 1
+          }]);
+          setLastMove({ x, y });
+
+          // 確定落子有效
+          setBoard(newBoard);
+          if (capturedStonesCount > 0) {
+            setCaptures(prev => ({ ...prev, [turn]: prev[turn] + capturedStonesCount }));
+          }
+          setTurn(opponentColor);
+        };
+
+        // 處理點擊棋盤
+        const handleBoardClick = (x, y) => {
+          if (mode === 'play') {
+            handlePlayMove(x, y);
+          } else if (mode === 'setup') {
+            // 排盤模式：直接放置選擇的棋子
+            let newBoard = board.map(row => [...row]);
+            newBoard[y][x] = setupTool;
+            setBoard(newBoard);
+          } else if (mode === 'score') {
+            // 點擊死子標記
+            if (board[y][x] !== 0) {
+              const key = `${x},${y}`;
+              setDeadStones(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(key)) {
+                  newSet.delete(key);
+                } else {
+                  newSet.add(key);
+                }
+                return newSet;
+              });
+            }
+          }
+        };
+
+        // 計算領地 (Flood Fill 演算法)
+        const calculateTerritory = useCallback(() => {
+          let virtualBoard = board.map(row => [...row]);
+          let deadCount = { 1: 0, 2: 0 }; // 1: 黑死子, 2: 白死子
+
+          // 將死子視為空地，並計算死子數量
+          deadStones.forEach(key => {
+            let [x, y] = key.split(',').map(Number);
+            let color = virtualBoard[y][x];
+            if (color !== 0) {
+              deadCount[color]++;
+              virtualBoard[y][x] = 0; 
+            }
+          });
+
+          let visited = new Set();
+          let points = [];
+          let territoryCount = { 1: 0, 2: 0 };
+
+          for (let y = 0; y < BOARD_SIZE; y++) {
+            for (let x = 0; x < BOARD_SIZE; x++) {
+              if (virtualBoard[y][x] === 0 && !visited.has(`${x},${y}`)) {
+                let region = [];
+                let boundingColors = new Set();
+                let queue = [[x, y]];
+                visited.add(`${x},${y}`);
+
+                // 泛洪尋找整個空地區域
+                while (queue.length > 0) {
+                  let [cx, cy] = queue.shift();
+                  region.push({ x: cx, y: cy });
+
+                  let neighbors = getNeighbors(cx, cy);
+                  for (let [nx, ny] of neighbors) {
+                    if (virtualBoard[ny][nx] === 0) {
+                      if (!visited.has(`${nx},${ny}`)) {
+                        visited.add(`${nx},${ny}`);
+                        queue.push([nx, ny]);
+                      }
+                    } else {
+                      boundingColors.add(virtualBoard[ny][nx]);
+                    }
+                  }
+                }
+
+                // 判斷此區域歸屬
+                let owner = 0;
+                if (boundingColors.has(1) && !boundingColors.has(2)) owner = 1; // 只有黑子包圍
+                else if (boundingColors.has(2) && !boundingColors.has(1)) owner = 2; // 只有白子包圍
+
+                if (owner !== 0) {
+                  territoryCount[owner] += region.length;
+                }
+                
+                region.forEach(p => {
+                  points.push({ ...p, owner });
+                });
+              }
+            }
+          }
+
+          setTerritoryResult({
+            points,
+            blackTerritory: territoryCount[1],
+            whiteTerritory: territoryCount[2],
+            blackDeadStones: deadCount[1],
+            whiteDeadStones: deadCount[2]
+          });
+        }, [board, deadStones]);
+
+        // 當進入計目階段或死子改變時，重新計算
+        useEffect(() => {
+          if (mode === 'score') {
+            calculateTerritory();
+          }
+        }, [mode, deadStones, calculateTerritory]);
+
+        const toggleMode = () => {
+          if (mode === 'score') {
+            setMode(prevMode);
+            setDeadStones(new Set()); // 清除死子標記
+            setMessage('');
+          } else {
+            setPrevMode(mode);
+            setMode('score');
+            setMessage('請點擊盤面上的「死子」來標記它們。程式會自動計算領地。');
+          }
+        };
+
+        // 悔棋功能
+        const undoMove = () => {
+          if (history.length === 0) {
+            setMessage('已經回到開局，無法再悔棋');
+            return;
+          }
+
+          if (mode === 'score') {
+            setMode(prevMode);
+            setDeadStones(new Set());
+          }
+
+          const prevState = history[history.length - 1];
+          setBoard(prevState.board);
+          setTurn(prevState.turn);
+          setCaptures(prevState.captures);
+          setLastMove(prevState.lastMove);
+          
+          setHistory(prev => prev.slice(0, -1));
+          setMoveRecords(prev => prev.slice(0, -1));
+          setMessage('已悔棋');
+        };
+
+        const resetBoard = () => {
+          requestConfirm('確定要清空棋盤嗎？', () => {
+            setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0)));
+            setCaptures({ 1: 0, 2: 0 });
+            setDeadStones(new Set());
+            setTurn(1);
+            if (mode === 'score') setMode(prevMode);
+            setHistory([]);
+            setLastMove(null);
+            setMoveRecords([]);
+            setMessage('');
+          });
+        };
+
+        const backToMenu = () => {
+          requestConfirm('確定要返回首頁嗎？將會遺失當前盤面進度。', () => {
+            setMode('menu');
+            setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0)));
+            setCaptures({ 1: 0, 2: 0 });
+            setDeadStones(new Set());
+            setHistory([]);
+            setMoveRecords([]);
+            setLastMove(null);
+            setTurn(1);
+            setMessage('');
+          });
+        };
+
+        // 當有新紀錄時，自動滾動到最下方
+        useEffect(() => {
+          if (moveListRef.current) {
+            moveListRef.current.scrollTop = moveListRef.current.scrollHeight;
+          }
+        }, [moveRecords]);
+
+        // 分數計算
+        const blackTotal = territoryResult.blackTerritory + captures[1] + territoryResult.whiteDeadStones;
+        const whiteTotal = territoryResult.whiteTerritory + captures[2] + territoryResult.blackDeadStones + KOMI;
+        const winner = blackTotal > whiteTotal ? '黑方' : '白方';
+        const diff = Math.abs(blackTotal - whiteTotal);
+
+        // --- 主選單畫面 ---
+        if (mode === 'menu') {
+          return (
+            <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
+              <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-slate-200">
+                <h1 className="text-3xl font-black mb-2 text-slate-800 tracking-tight">圍棋自動計目器</h1>
+                <p className="text-slate-500 mb-8 font-medium">請選擇您要進行的模式：</p>
+                
+                <div className="flex flex-col gap-5">
+                  <button 
+                    onClick={() => { setMode('play'); setPrevMode('play'); }}
+                    className="group relative p-6 bg-white border-2 border-indigo-100 hover:border-indigo-500 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col gap-2"
+                  >
+                    <div className="text-xl font-bold text-indigo-700 flex items-center gap-2">
+                      <span className="text-2xl">⚔️</span> 雙方對弈模式
+                    </div>
+                    <div className="text-sm text-slate-600 font-medium">
+                      從空盤開始，黑白輪流落子，包含提吃規則與歷史紀錄。
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={() => { setMode('setup'); setPrevMode('setup'); }}
+                    className="group relative p-6 bg-white border-2 border-amber-100 hover:border-amber-500 rounded-2xl shadow-sm hover:shadow-md transition-all text-left flex flex-col gap-2"
+                  >
+                    <div className="text-xl font-bold text-amber-700 flex items-center gap-2">
+                      <span className="text-2xl">🧩</span> 自由排盤模式
+                    </div>
+                    <div className="text-sm text-slate-600 font-medium">
+                      直接在盤面上自由點擊擺放黑白子，用於快速結算殘局。
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // --- 遊戲/排盤畫面 ---
+        return (
+          <div className="min-h-screen bg-slate-100 p-4 font-sans text-slate-800 flex flex-col md:flex-row gap-6 items-start justify-center">
+            
+            {/* 左側：棋盤區 */}
+            <div className="flex flex-col items-center gap-4 bg-white p-6 rounded-2xl shadow-xl border border-slate-200 w-full max-w-[650px]">
+              
+              <div className="flex justify-between w-full items-center mb-2">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={backToMenu}
+                    className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="返回首頁"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                  </button>
+                  <h1 className="text-xl font-bold text-slate-800">
+                    {prevMode === 'setup' ? '自由排盤計目' : '圍棋對弈計目'}
+                  </h1>
+                </div>
+                <div className="flex gap-2">
+                  {prevMode === 'play' && (
+                    <button 
+                      onClick={undoMove}
+                      disabled={history.length === 0 || mode === 'score'}
+                      className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${history.length === 0 || mode === 'score' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                    >
+                      悔棋
+                    </button>
+                  )}
+                   <button 
+                    onClick={resetBoard}
+                    className="px-3 py-1.5 text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+                  >
+                    重置棋盤
+                  </button>
+                  <button 
+                    onClick={toggleMode}
+                    className={`px-4 py-1.5 text-sm font-semibold text-white rounded-lg transition-colors shadow-sm ${mode === 'score' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  >
+                    {mode === 'score' ? `返回${prevMode === 'setup' ? '排盤' : '落子'}` : '進入計目階段'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 狀態列 */}
+              {prevMode === 'setup' && mode !== 'score' ? (
+                <div className="w-full flex justify-center items-center gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <span className="font-bold text-slate-700">選擇工具：</span>
+                  <button onClick={() => setSetupTool(1)} className={`px-4 py-1.5 rounded-md flex items-center gap-2 transition-all ${setupTool === 1 ? 'bg-white shadow-sm border-2 border-slate-800' : 'hover:bg-slate-200 border-2 border-transparent'}`}>
+                    <div className="w-4 h-4 bg-black rounded-full shadow-sm"></div> 黑子
+                  </button>
+                  <button onClick={() => setSetupTool(2)} className={`px-4 py-1.5 rounded-md flex items-center gap-2 transition-all ${setupTool === 2 ? 'bg-white shadow-sm border-2 border-slate-400' : 'hover:bg-slate-200 border-2 border-transparent'}`}>
+                    <div className="w-4 h-4 bg-white border border-slate-300 rounded-full shadow-sm"></div> 白子
+                  </button>
+                  <button onClick={() => setSetupTool(0)} className={`px-4 py-1.5 rounded-md flex items-center gap-2 transition-all ${setupTool === 0 ? 'bg-white shadow-sm border-2 border-red-300' : 'hover:bg-slate-200 border-2 border-transparent'}`}>
+                    ❌ 清除
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full flex justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-black rounded-full shadow-sm"></div>
+                    <span className="font-semibold text-sm">提吃: {captures[1]}</span>
+                  </div>
+                  <div className="text-center font-bold text-lg">
+                    {mode === 'play' ? (
+                      <span className={turn === 1 ? 'text-slate-800' : 'text-slate-500'}>
+                        {turn === 1 ? '輪到黑方落子' : '輪到白方落子'}
+                      </span>
+                    ) : (
+                      <span className="text-amber-600">計目模式：標記死子</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <span className="font-semibold text-sm">提吃: {captures[2]}</span>
+                    <div className="w-4 h-4 bg-white border border-slate-400 rounded-full shadow-sm"></div>
+                  </div>
+                </div>
+              )}
+
+              {message && (
+                <div className="w-full p-2 bg-blue-50 text-blue-700 text-sm font-medium rounded text-center">
+                  {message}
+                </div>
+              )}
+
+              {/* 棋盤本體 (使用 SVG 繪製確保精準) */}
+              <div className="w-full aspect-square bg-[#E3C185] rounded shadow-inner p-2 border-2 border-[#b58b4c]" style={{ maxWidth: '600px' }}>
+                <svg viewBox="-1.5 -1.5 20.5 20.5" className="w-full h-full cursor-crosshair">
+                  
+                  {/* 繪製座標標記 1-19 (僅保留上方與左方) */}
+                  {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                    <g key={`coord-${i}`}>
+                      {/* 頂部 X 座標 */}
+                      <text x={i} y={-0.8} fontSize="0.6" textAnchor="middle" fill="#654321" fontWeight="bold">{i + 1}</text>
+                      {/* 左側 Y 座標 */}
+                      <text x={-0.8} y={i + 0.2} fontSize="0.6" textAnchor="middle" fill="#654321" fontWeight="bold">{i + 1}</text>
+                    </g>
+                  ))}
+
+                  {/* 繪製網格線 */}
+                  {Array.from({ length: BOARD_SIZE }).map((_, i) => (
+                    <g key={`lines-${i}`}>
+                      <line x1={0} y1={i} x2={BOARD_SIZE - 1} y2={i} stroke="#333" strokeWidth="0.05" />
+                      <line x1={i} y1={0} x2={i} y2={BOARD_SIZE - 1} stroke="#333" strokeWidth="0.05" />
+                    </g>
+                  ))}
+
+                  {/* 繪製星位 */}
+                  {STAR_POINTS.map(([x, y]) => (
+                    <circle key={`star-${x}-${y}`} cx={x} cy={y} r="0.12" fill="#333" />
+                  ))}
+
+                  {/* 繪製計目階段的領地標記 (畫在棋子下方) */}
+                  {mode === 'score' && territoryResult.points.map(pt => {
+                    if (pt.owner === 0) return null; // 單官不標記
+                    return (
+                      <rect 
+                        key={`terr-${pt.x}-${pt.y}`}
+                        x={pt.x - 0.25} 
+                        y={pt.y - 0.25} 
+                        width="0.5" 
+                        height="0.5" 
+                        fill={pt.owner === 1 ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)'}
+                      />
+                    );
+                  })}
+
+                  {/* 繪製棋子與互動區塊 */}
+                  {board.map((row, y) => 
+                    row.map((color, x) => {
+                      const isDead = deadStones.has(`${x},${y}`);
+                      return (
+                        <g key={`pos-${x}-${y}`} onClick={() => handleBoardClick(x, y)}>
+                          {/* 透明互動感應區 */}
+                          <rect x={x - 0.5} y={y - 0.5} width="1" height="1" fill="transparent" />
+                          
+                          {color !== 0 && (
+                            <g style={{ opacity: isDead ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+                              {/* 棋子陰影 */}
+                              <circle cx={x + 0.05} cy={y + 0.05} r="0.45" fill="rgba(0,0,0,0.3)" />
+                              {/* 棋子 */}
+                              <circle 
+                                cx={x} 
+                                cy={y} 
+                                r="0.45" 
+                                fill={color === 1 ? 'url(#blackStone)' : 'url(#whiteStone)'} 
+                              />
+                              {/* 邊框(主要給白子用) */}
+                              {color === 2 && (
+                                <circle cx={x} cy={y} r="0.45" stroke="#ccc" strokeWidth="0.02" fill="none" />
+                              )}
+                              
+                              {/* 最後落子標記 */}
+                              {lastMove && prevMode === 'play' && lastMove.x === x && lastMove.y === y && (
+                                <circle cx={x} cy={y} r="0.15" fill={color === 1 ? '#fff' : '#000'} opacity="0.8" />
+                              )}
+
+                              {/* 死子標記 (叉叉) */}
+                              {isDead && (
+                                <path 
+                                  d={`M ${x - 0.2} ${y - 0.2} L ${x + 0.2} ${y + 0.2} M ${x + 0.2} ${y - 0.2} L ${x - 0.2} ${y + 0.2}`} 
+                                  stroke={color === 1 ? 'white' : 'red'} 
+                                  strokeWidth="0.1" 
+                                />
+                              )}
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })
+                  )}
+
+                  {/* 漸層定義 */}
+                  <defs>
+                    <radialGradient id="blackStone" cx="30%" cy="30%" r="70%">
+                      <stop offset="0%" stopColor="#666" />
+                      <stop offset="100%" stopColor="#111" />
+                    </radialGradient>
+                    <radialGradient id="whiteStone" cx="30%" cy="30%" r="70%">
+                      <stop offset="0%" stopColor="#fff" />
+                      <stop offset="100%" stopColor="#ddd" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+              </div>
+            </div>
+
+            {/* 右側：紀錄與計分板 */}
+            <div className="w-full max-w-[400px] flex flex-col gap-4">
+              
+              {/* 對弈紀錄/排盤說明 區塊 */}
+              {prevMode === 'play' ? (
+                <div className="bg-white p-4 rounded-2xl shadow-xl border border-slate-200 flex flex-col" style={{ height: '300px' }}>
+                  <h2 className="text-lg font-bold mb-2 border-b pb-2 flex justify-between items-center">
+                    <span>📝 對弈紀錄</span>
+                    <span className="text-sm font-normal text-slate-500">總手數: {moveRecords.length}</span>
+                  </h2>
+                  <div 
+                    ref={moveListRef}
+                    className="overflow-y-auto flex-1 pr-2 space-y-1 text-sm font-mono scroll-smooth"
+                  >
+                    {moveRecords.length === 0 ? (
+                      <div className="text-slate-400 text-center py-4">尚無落子紀錄</div>
+                    ) : (
+                      moveRecords.map((move, idx) => (
+                        <div key={idx} className={`p-1.5 rounded flex justify-between ${idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-slate-100`}>
+                          <span className="text-slate-500 w-8">{idx + 1}.</span>
+                          <span className={`font-bold ${move.color === 1 ? 'text-black' : 'text-slate-400'}`}>
+                            {move.color === 1 ? '● 黑' : '○ 白'}
+                          </span>
+                          <span className="text-slate-700 w-24 text-right">
+                            ({move.x}, {move.y})
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {lastMove && mode === 'play' && (
+                    <div className="mt-2 pt-2 border-t text-sm text-center text-indigo-700 font-semibold bg-indigo-50 rounded p-1">
+                      最新落子：{turn === 2 ? '黑方' : '白方'} ({lastMove.x + 1}, {lastMove.y + 1})
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* 排盤模式：新增設定吃子數 UI */}
+                  {mode !== 'score' && (
+                    <div className="bg-white p-5 rounded-2xl shadow-xl border border-slate-200">
+                      <h2 className="text-md font-bold mb-3 border-b pb-2 flex items-center gap-2">
+                        ⚔️ 設定已提吃子數
+                      </h2>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-black rounded-full shadow-sm"></div>
+                            <span className="text-sm font-semibold">黑吃白:</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setCaptures(p => ({...p, 1: Math.max(0, p[1] - 1)}))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors">-</button>
+                            <span className="w-8 text-center font-mono font-bold text-lg">{captures[1]}</span>
+                            <button onClick={() => setCaptures(p => ({...p, 1: p[1] + 1}))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors">+</button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-white border border-slate-400 rounded-full shadow-sm"></div>
+                            <span className="text-sm font-semibold">白吃黑:</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setCaptures(p => ({...p, 2: Math.max(0, p[2] - 1)}))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors">-</button>
+                            <span className="w-8 text-center font-mono font-bold text-lg">{captures[2]}</span>
+                            <button onClick={() => setCaptures(p => ({...p, 2: p[2] + 1}))} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-100 transition-colors">+</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 排盤模式說明 */}
+                  <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 flex flex-col text-slate-700">
+                    <h2 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                      <span>🧩 排盤模式說明</span>
+                    </h2>
+                    <ul className="space-y-3 text-sm list-disc pl-5">
+                      <li>點擊上方工具列選擇<strong className="text-black">黑子</strong>、<strong className="text-slate-400">白子</strong>或<strong>清除</strong>。</li>
+                      <li>直接在左側棋盤點擊，自由配置盤面（無落子順序與提吃限制）。</li>
+                      <li>排盤完成後，點擊「<strong>進入計目階段</strong>」。</li>
+                      <li>在計目階段，點擊盤面上的死子將其標記，系統會自動結算領地。</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* 計分板 */}
+              <div className={`bg-white p-6 rounded-2xl shadow-xl border border-slate-200 transition-opacity duration-300 ${mode === 'score' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                <h2 className="text-xl font-bold mb-4 text-center border-b pb-2">盤面結算 (貼目 6.5)</h2>
+                
+                {mode === 'score' ? (
+                  <div className="space-y-6">
+                    {/* 黑方分數 */}
+                    <div className="bg-slate-800 text-white p-4 rounded-xl shadow-inner">
+                      <div className="flex justify-between items-end mb-2 border-b border-slate-600 pb-2">
+                        <span className="text-lg font-bold">黑方總目數</span>
+                        <span className="text-3xl font-black">{blackTotal} 目</span>
+                      </div>
+                      <div className="text-sm space-y-1 text-slate-300">
+                        <div className="flex justify-between"><span>盤面領地 (黑色方塊):</span> <span>{territoryResult.blackTerritory}</span></div>
+                        <div className="flex justify-between"><span>吃掉的白子:</span> <span>{captures[1]}</span></div>
+                        <div className="flex justify-between"><span>盤面白死子:</span> <span>{territoryResult.whiteDeadStones}</span></div>
+                      </div>
+                    </div>
+
+                    {/* 白方分數 */}
+                    <div className="bg-white border-2 border-slate-300 text-slate-800 p-4 rounded-xl shadow-inner">
+                      <div className="flex justify-between items-end mb-2 border-b border-slate-200 pb-2">
+                        <span className="text-lg font-bold">白方總目數</span>
+                        <span className="text-3xl font-black">{whiteTotal} 目</span>
+                      </div>
+                      <div className="text-sm space-y-1 text-slate-500">
+                        <div className="flex justify-between"><span>盤面領地 (白色方塊):</span> <span>{territoryResult.whiteTerritory}</span></div>
+                        <div className="flex justify-between"><span>吃掉的黑子:</span> <span>{captures[2]}</span></div>
+                        <div className="flex justify-between"><span>盤面黑死子:</span> <span>{territoryResult.blackDeadStones}</span></div>
+                        <div className="flex justify-between font-semibold text-amber-600"><span>貼目:</span> <span>{KOMI}</span></div>
+                      </div>
+                    </div>
+
+                    {/* 最終結果 */}
+                    <div className="mt-4 text-center p-3 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-900">
+                      <div className="font-bold text-xl mb-1">
+                        勝負結果
+                      </div>
+                      <div>
+                        {winner} 勝 <span className="font-black text-2xl mx-1">{diff}</span> 目
+                      </div>
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-slate-500">
+                    <p>請先點擊「進入計目階段」</p>
+                    <p className="text-sm mt-2">程式將會自動計算領地與死子</p>
+                  </div>
+                )}
+              </div>
+
+              {/* 說明面板 */}
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-900 text-sm">
+                <h3 className="font-bold mb-2 flex items-center gap-2">
+                  ℹ️ 如何看懂這個計目？
+                </h3>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li><strong>黑色/白色方塊：</strong> 代表該空交叉點被哪一方的棋子完全包圍（即「領地」）。</li>
+                  <li><strong>無標記的空點：</strong> 代表「單官」，雙方皆未完全包圍，不計入任何一方。</li>
+                  <li><strong>死子標記 (叉叉)：</strong> 在計目時會被視為已被對方吃掉，空出來的位置會併入對方的領地計算。</li>
+                  <li>總分 = 領地 + 遊戲中吃子 + 盤面死子 (+ 白方貼目)。</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* --- 新增：自訂確認對話框 UI (浮動置頂) --- */}
+            {confirmDialog.isOpen && (
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full">
+                  <h3 className="text-lg font-bold mb-6 text-slate-800 text-center">{confirmDialog.message}</h3>
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={closeConfirm}
+                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors w-full"
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={() => {
+                        if(confirmDialog.onConfirm) confirmDialog.onConfirm();
+                        closeConfirm();
+                      }}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors w-full shadow-sm"
+                    >
+                      確定
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<GoScorer />);
+    </script>
+  </body>
+</html>
