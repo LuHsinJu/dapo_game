@@ -17,15 +17,17 @@
       font-family: sans-serif;
       overflow-x: hidden;
     }
-    .rgb-text {
-      animation: rgbAnimation 5s linear infinite;
-      font-family: 'Audiowide', sans-serif;
+    .esports-title {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-style: italic;
+      transform: skewX(-5deg);
+      animation: esportsSyncPulse 1.5s ease-in-out infinite alternate;
     }
-    @keyframes rgbAnimation {
-      0% { color: #ff3366; text-shadow: 0 0 10px #ff3366; }
-      33% { color: #33ccff; text-shadow: 0 0 10px #33ccff; }
-      66% { color: #cc33ff; text-shadow: 0 0 10px #cc33ff; }
-      100% { color: #ff3366; text-shadow: 0 0 10px #ff3366; }
+    @keyframes esportsSyncPulse {
+      0% { color: #e0ffff; text-shadow: 0 0 5px #fff, 0 0 10px #00f3ff, 0 0 20px #00f3ff, 0 0 40px #00f3ff; }
+      50% { color: #ffe0ff; text-shadow: 0 0 5px #fff, 0 0 10px #bf00ff, 0 0 20px #bf00ff, 0 0 40px #bf00ff; }
+      100% { color: #ffe0e0; text-shadow: 0 0 5px #fff, 0 0 10px #ff003c, 0 0 20px #ff003c, 0 0 40px #ff003c; }
     }
     .glass-panel {
       background: linear-gradient(135deg, rgba(13, 17, 23, 0.85) 0%, rgba(28, 25, 52, 0.85) 100%);
@@ -60,30 +62,32 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4">
+<body class="h-screen flex flex-col items-center p-2 overflow-hidden">
 
   <!-- 標題區 (全域共用) -->
-  <div class="flex flex-col items-center w-full max-w-6xl mb-4 mt-2">
-    <div class="flex items-center">
-      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" class="w-16 h-16 md:w-20 md:h-20 mr-4 object-contain hidden sm:block" onerror="this.style.display='none'">
-      <h1 class="text-3xl md:text-5xl font-bold rgb-text text-center">TRIANGLE X<br/><span class="text-lg md:text-2xl mt-1 block text-white opacity-80 font-sans tracking-widest">全等召喚</span></h1>
+  <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-1">
+    <div class="flex items-center justify-center">
+      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" class="w-10 h-10 md:w-12 md:h-12 mr-3 object-contain hidden sm:block" onerror="this.style.display='none'">
+      <h1 class="text-2xl md:text-4xl text-center flex items-baseline gap-3 esports-title">
+        TRIANGLE X <span class="text-base md:text-xl tracking-widest font-sans">全等召喚</span>
+      </h1>
     </div>
   </div>
 
   <!-- 1. 主選單畫面 -->
-  <div id="menuScreen" class="glass-panel p-8 w-full max-w-md text-center space-y-8 mt-8">
-    <h2 class="text-2xl font-bold text-indigo-300 mb-6">選擇遊戲模式</h2>
+  <div id="menuScreen" class="glass-panel p-6 w-full max-w-md text-center space-y-6 mt-4 md:mt-8">
+    <h2 class="text-xl md:text-2xl font-bold text-indigo-300 mb-4">選擇遊戲模式</h2>
     <div class="space-y-4">
-      <button onclick="startSoloMode()" class="btn-primary w-full py-4 rounded-xl font-bold text-xl flex flex-col items-center justify-center space-y-1">
+      <button onclick="startSoloMode()" class="btn-primary w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl flex flex-col items-center justify-center space-y-1">
         <span>👤 單機挑戰</span>
         <span class="text-xs font-normal text-indigo-200">一個人專心練習，挑戰高分</span>
       </button>
-      <div class="relative flex py-2 items-center">
+      <div class="relative flex py-1 items-center">
         <div class="flex-grow border-t border-gray-600"></div>
         <span class="flex-shrink-0 mx-4 text-gray-400">或</span>
         <div class="flex-grow border-t border-gray-600"></div>
       </div>
-      <button onclick="enterLobbyMode()" class="btn-primary w-full py-4 rounded-xl font-bold text-xl flex flex-col items-center justify-center space-y-1">
+      <button onclick="enterLobbyMode()" class="btn-primary w-full py-3 md:py-4 rounded-xl font-bold text-lg md:text-xl flex flex-col items-center justify-center space-y-1">
         <span>🌐 連線對戰</span>
         <span class="text-xs font-normal text-indigo-200">建立房間或輸入房號與好友對戰</span>
       </button>
@@ -91,44 +95,47 @@
   </div>
 
   <!-- 2. 單機挑戰畫面 (共用) -->
-  <div id="soloScreen" class="hidden w-full max-w-3xl flex-col items-center space-y-4">
-    <div class="glass-panel p-6 w-full flex flex-col h-full mt-4">
-      <div class="flex justify-between items-center border-b border-indigo-500 pb-4 mb-6">
+  <div id="soloScreen" class="hidden w-full max-w-3xl flex-col items-center space-y-2 flex-1 min-h-0 pb-2">
+    <div class="glass-panel p-3 md:p-5 w-full flex flex-col h-full">
+      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-3">
         <div class="text-left">
-          <div class="text-sm text-indigo-300">目前得分</div>
-          <div class="text-3xl font-bold text-indigo-400" id="soloScore">0</div>
+          <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
+          <div class="text-xl md:text-3xl font-bold text-indigo-400" id="soloScore">0</div>
         </div>
         <div class="text-center">
-          <div class="text-sm text-indigo-300">剩餘時間</div>
-          <div class="text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
+          <div class="text-xs md:text-sm text-indigo-300">剩餘時間</div>
+          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
         </div>
         <div class="text-right">
-          <div class="text-sm text-indigo-300">連續錯誤</div>
-          <div class="text-3xl font-bold text-red-500" id="soloWrong">0</div>
+          <div class="text-xs md:text-sm text-indigo-300">連續錯誤</div>
+          <div class="text-xl md:text-3xl font-bold text-red-500" id="soloWrong">0</div>
         </div>
       </div>
-      <div class="text-center mb-6">
-        <span class="text-xl text-gray-300">條件：</span>
-        <span id="soloQuestion" class="text-2xl font-bold text-yellow-400 tracking-wider">加載中...</span>
+      <div class="text-center mb-3">
+        <span class="text-lg md:text-xl text-gray-300">條件：</span>
+        <span id="soloQuestion" class="text-xl md:text-2xl font-bold text-yellow-400 tracking-wider">加載中...</span>
       </div>
-      <div class="grid grid-cols-2 gap-4 mb-8 max-w-2xl mx-auto w-full">
+      
+      <!-- 壓縮圖形高度上限 -->
+      <div class="grid grid-cols-2 gap-3 mb-4 max-w-[340px] md:max-w-md mx-auto w-full flex-1 min-h-0 items-center">
         <canvas id="triangleS1" class="w-full aspect-square"></canvas>
         <canvas id="triangleS2" class="w-full aspect-square"></canvas>
       </div>
+
       <div class="mt-auto max-w-2xl mx-auto w-full">
-        <div class="bg-gray-900 bg-opacity-70 rounded-xl p-4 border border-indigo-500/30">
-          <div class="text-center text-indigo-200 mb-3 text-sm font-semibold">請選擇全等依據：</div>
-          <div class="flex flex-wrap justify-center gap-3">
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('SSS')">SSS</button>
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('SAS')">SAS</button>
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('ASA')">ASA</button>
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('AAS')">AAS</button>
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('RHS')">RHS</button>
-            <button class="btn-primary px-5 py-3 rounded-lg shadow font-bold text-lg" onclick="submitSoloAnswer('NOT')">不一定</button>
+        <div class="bg-gray-900 bg-opacity-70 rounded-xl p-2 md:p-3 border border-indigo-500/30">
+          <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('SSS')">SSS</button>
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('SAS')">SAS</button>
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('ASA')">ASA</button>
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('AAS')">AAS</button>
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('RHS')">RHS</button>
+            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('NOT')">不一定</button>
           </div>
         </div>
       </div>
-      <button onclick="returnToMenu()" class="mt-6 text-gray-400 hover:text-white text-sm transition-colors text-center">← 返回主畫面</button>
+      <button onclick="returnToMenu()" class="mt-3 text-gray-400 hover:text-white text-xs md:text-sm transition-colors text-center">← 返回主畫面</button>
     </div>
   </div>
 
@@ -163,76 +170,76 @@
 
   <!-- 5. 階段過渡畫面 -->
   <div id="phaseTransition" class="hidden fixed inset-0 phase-overlay flex-col items-center justify-center space-y-4">
-    <h2 id="phaseTitle" class="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 tracking-widest drop-shadow-[0_0_15px_rgba(236,72,153,0.8)]"></h2>
-    <p id="phaseDesc" class="text-xl md:text-2xl text-gray-300"></p>
+    <h2 id="phaseTitle" class="text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 tracking-widest drop-shadow-[0_0_15px_rgba(236,72,153,0.8)] text-center px-4"></h2>
+    <p id="phaseDesc" class="text-lg md:text-2xl text-gray-300 text-center px-4"></p>
     <div class="text-6xl font-bold text-white mt-8 animate-bounce" id="phaseCountdown">3</div>
   </div>
 
   <!-- 6. 連線遊戲主畫面 -->
-  <div id="multiplayerScreen" class="hidden w-full max-w-6xl flex-col items-center space-y-4">
-    <div class="glass-panel p-4 w-full text-center flex flex-col items-center relative">
-      <div class="w-full flex justify-between items-center px-4">
-        <div class="text-lg">我是：<span id="myRoleLabel" class="font-bold text-yellow-400 text-xl"></span></div>
-        <div class="text-lg font-bold" id="phaseIndicator">階段一 (獨立標記)</div>
-        <div class="text-lg">倒數：<span id="multiTimer" class="font-bold text-red-400">03:30</span></div>
+  <div id="multiplayerScreen" class="hidden w-full max-w-6xl flex-col items-center space-y-2 flex-1 min-h-0 pb-2">
+    <div class="glass-panel p-2 md:p-3 w-full text-center flex flex-col items-center relative">
+      <div class="w-full flex justify-between items-center px-2 md:px-4">
+        <div class="text-sm md:text-lg">我是：<span id="myRoleLabel" class="font-bold text-yellow-400 text-base md:text-xl"></span></div>
+        <div class="text-sm md:text-lg font-bold" id="phaseIndicator">階段一 (獨立標記)</div>
+        <div class="text-sm md:text-lg">倒數：<span id="multiTimer" class="font-bold text-red-400">03:30</span></div>
       </div>
       
       <!-- 狀態提示列 (答對或標記錯誤提示) -->
-      <div id="multiSystemMsg" class="absolute top-14 text-lg font-bold text-pink-400 drop-shadow-md h-6 transition-all"></div>
+      <div id="multiSystemMsg" class="absolute top-10 text-sm md:text-lg font-bold text-pink-400 drop-shadow-md h-6 transition-all"></div>
       
-      <div class="text-xl md:text-2xl mt-8 md:mt-4">
+      <div class="text-lg md:text-2xl mt-4 md:mt-2">
         條件：<span id="multiQuestion" class="font-bold text-yellow-400 tracking-wider">加載中...</span>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full relative" id="multiGrid">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full relative flex-1 min-h-0" id="multiGrid">
       <!-- 玩家 A 區 -->
-      <div id="areaA" class="glass-panel p-5 flex flex-col h-full transition-all duration-500">
-        <div class="text-xl font-bold border-b border-indigo-500 pb-2 flex justify-between mb-4">
-          <span>玩家 A <span id="tagA" class="text-sm text-yellow-400 hidden">(你)</span><br/><span class="text-sm font-normal">得分：<span id="scoreA" class="text-indigo-400 text-lg">0</span></span></span>
-          <span class="text-sm text-right">連續錯誤<br/><span id="wrongA" class="text-red-500 font-bold text-lg">0</span></span>
+      <div id="areaA" class="glass-panel p-3 flex flex-col h-full transition-all duration-500">
+        <div class="text-base md:text-lg font-bold border-b border-indigo-500 pb-1 flex justify-between mb-2">
+          <span>玩家 A <span id="tagA" class="text-xs text-yellow-400 hidden">(你)</span><br/><span class="text-xs font-normal">得分：<span id="scoreA" class="text-indigo-400 text-base">0</span></span></span>
+          <span class="text-xs text-right">連續錯誤<br/><span id="wrongA" class="text-red-500 font-bold text-base">0</span></span>
         </div>
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-2 gap-2 mb-2 max-w-[260px] sm:max-w-[320px] mx-auto w-full flex-1 min-h-0 items-center">
           <canvas id="triangleA1" class="w-full aspect-square"></canvas>
           <canvas id="triangleA2" class="w-full aspect-square"></canvas>
         </div>
         <div class="mt-auto">
-          <div class="bg-gray-900 rounded-lg p-3 border border-indigo-500/30">
-            <div class="flex flex-wrap justify-center gap-2">
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('NOT')">不一定</button>
+          <div class="bg-gray-900 rounded-lg p-2 border border-indigo-500/30">
+            <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
             </div>
           </div>
-          <div class="text-center text-indigo-300 mt-2 h-6" id="statusA">準備中...</div>
+          <div class="text-center text-indigo-300 mt-1 h-5 text-xs md:text-sm" id="statusA">準備中...</div>
         </div>
       </div>
 
       <!-- 玩家 B 區 -->
-      <div id="areaB" class="glass-panel p-5 flex flex-col h-full transition-all duration-500">
-        <div class="text-xl font-bold border-b border-indigo-500 pb-2 flex justify-between mb-4">
-          <span>玩家 B <span id="tagB" class="text-sm text-yellow-400 hidden">(你)</span><br/><span class="text-sm font-normal">得分：<span id="scoreB" class="text-indigo-400 text-lg">0</span></span></span>
-          <span class="text-sm text-right">連續錯誤<br/><span id="wrongB" class="text-red-500 font-bold text-lg">0</span></span>
+      <div id="areaB" class="glass-panel p-3 flex flex-col h-full transition-all duration-500">
+        <div class="text-base md:text-lg font-bold border-b border-indigo-500 pb-1 flex justify-between mb-2">
+          <span>玩家 B <span id="tagB" class="text-xs text-yellow-400 hidden">(你)</span><br/><span class="text-xs font-normal">得分：<span id="scoreB" class="text-indigo-400 text-base">0</span></span></span>
+          <span class="text-xs text-right">連續錯誤<br/><span id="wrongB" class="text-red-500 font-bold text-base">0</span></span>
         </div>
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-2 gap-2 mb-2 max-w-[260px] sm:max-w-[320px] mx-auto w-full flex-1 min-h-0 items-center">
           <canvas id="triangleB1" class="w-full aspect-square"></canvas>
           <canvas id="triangleB2" class="w-full aspect-square"></canvas>
         </div>
         <div class="mt-auto">
-          <div class="bg-gray-900 rounded-lg p-3 border border-indigo-500/30">
-            <div class="flex flex-wrap justify-center gap-2">
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-3 py-2 rounded shadow font-bold" onclick="submitMultiAnswer('NOT')">不一定</button>
+          <div class="bg-gray-900 rounded-lg p-2 border border-indigo-500/30">
+            <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
+              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
             </div>
           </div>
-          <div class="text-center text-indigo-300 mt-2 h-6" id="statusB">準備中...</div>
+          <div class="text-center text-indigo-300 mt-1 h-5 text-xs md:text-sm" id="statusB">準備中...</div>
         </div>
       </div>
     </div>
@@ -734,7 +741,6 @@
             localGameState.reason = winner ? '時間到！' : '時間到！雙方平手';
             publishState();
           }
-
           // Phase 2: Next question trigger
           if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
             gd.p2_idx++;
