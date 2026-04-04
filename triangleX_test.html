@@ -50,6 +50,7 @@
       box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
       transform: translateY(-2px);
     }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
     .phase-overlay {
       background: rgba(10, 14, 32, 0.95);
       backdrop-filter: blur(15px);
@@ -59,17 +60,42 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
   </style>
-</head>
-<body class="h-screen flex flex-col items-center p-1 md:p-2 overflow-hidden">
+  
+  <!-- 【修正1】將所有的全域變數宣告移到最頂端，解決 ReferenceError -->
+  <script>
+    let currentMode = 'menu'; 
+    let globalTimerInterval = null;
+    let phaseIntroInterval = null; 
+    let selectedEdges = {};
+    let selectedAngles = {};
+    let systemMsgTimeout = null;
 
-  <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-1">
+    let teacherActiveRooms = {};
+    let currentMonitorRoomId = null; 
+
+    let mqttClient = null;
+    let isConnected = false;
+    let myRole = null;
+    let currentRoomId = null;
+    let localGameState = null;
+    let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
+    let timeOffset = 0; // 用於校準雙方時間差
+    let previousP1Idx = -1;
+    let previousP2Idx = -1;
+  </script>
+</head>
+<body class="h-screen flex flex-col items-center p-2 overflow-hidden">
+
+  <!-- 標題區 -->
+  <div class="flex flex-col items-center w-full max-w-6xl mb-2 mt-2 flex-none">
     <div class="flex items-center justify-center">
-      <h1 class="text-xl md:text-3xl text-center flex items-baseline gap-2 md:gap-3 esports-title">
+      <h1 class="text-2xl md:text-4xl text-center flex items-baseline gap-2 md:gap-3 esports-title">
         TRIANGLE X <span class="text-sm md:text-lg tracking-widest font-sans">全等召喚</span>
       </h1>
     </div>
   </div>
 
+  <!-- 1. 主選單畫面 -->
   <div id="menuScreen" class="glass-panel p-6 w-full max-w-md text-center space-y-6 mt-4 md:mt-8 relative">
     <div id="connectionStatus" class="absolute top-2 right-2 text-[10px] text-yellow-500 animate-pulse">連線中...</div>
     <h2 class="text-xl md:text-2xl font-bold text-indigo-300 mb-4">選擇遊戲模式</h2>
@@ -95,50 +121,61 @@
     </div>
   </div>
 
-  <div id="soloScreen" class="hidden w-full max-w-3xl flex-col items-center space-y-1 flex-1 min-h-0 pb-1">
-    <div class="glass-panel p-2 md:p-4 w-full flex flex-col h-full justify-between">
-      <div>
-        <div class="flex justify-between items-center border-b border-indigo-500 pb-1 mb-1">
-          <div class="text-left">
-            <div class="text-[10px] md:text-xs text-indigo-300">目前得分</div>
-            <div class="text-lg md:text-2xl font-bold text-indigo-400" id="soloScore">0</div>
-          </div>
-          <div class="text-center">
-            <div class="text-[10px] md:text-xs text-indigo-300">剩餘時間</div>
-            <div class="text-lg md:text-2xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
-          </div>
-          <div class="text-right">
-            <div class="text-[10px] md:text-xs text-indigo-300">連續錯誤</div>
-            <div class="text-lg md:text-2xl font-bold text-red-500" id="soloWrong">0</div>
-          </div>
+  <!-- 2. 單機挑戰畫面 -->
+  <div id="soloScreen" class="hidden w-full max-w-4xl flex-col justify-between items-center flex-1 min-h-0 pb-2">
+    <!-- Top Info -->
+    <div class="glass-panel p-3 md:p-4 w-full flex-none mb-2">
+      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2">
+        <div class="text-left w-1/3">
+          <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
+          <div class="text-xl md:text-2xl font-bold text-indigo-400" id="soloScore">0</div>
         </div>
-        <div class="text-center mb-1">
-          <span class="text-base md:text-lg text-gray-300">條件：</span>
-          <span id="soloQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider">加載中...</span>
+        <div class="text-center w-1/3">
+          <div class="text-xs md:text-sm text-indigo-300">剩餘時間</div>
+          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
+        </div>
+        <div class="text-right w-1/3">
+          <div class="text-xs md:text-sm text-indigo-300">連續錯誤</div>
+          <div class="text-xl md:text-2xl font-bold text-red-500" id="soloWrong">0</div>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-2 md:gap-4 mb-2 max-w-[400px] md:max-w-lg mx-auto w-full flex-1 min-h-0 items-center">
-        <canvas id="triangleS1" class="w-full h-full object-contain"></canvas>
-        <canvas id="triangleS2" class="w-full h-full object-contain"></canvas>
+      <div class="text-center">
+        <span class="text-base md:text-lg text-gray-300">條件：</span>
+        <span id="soloQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider transition-transform duration-200 inline-block">加載中...</span>
       </div>
-      <div class="mt-1 max-w-2xl mx-auto w-full">
-        <div class="bg-gray-900 bg-opacity-70 rounded-xl p-1.5 md:p-2 border border-indigo-500/30">
-          <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SSS')">SSS</button>
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SAS')">SAS</button>
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('ASA')">ASA</button>
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('AAS')">AAS</button>
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('RHS')">RHS</button>
-            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('NOT')">不一定</button>
-          </div>
+    </div>
+
+    <!-- Center Canvas Area -->
+    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">
+      <div class="w-full max-w-[450px]">
+        <div class="grid grid-cols-2 gap-4 w-full aspect-[2/1] items-center justify-items-center">
+          <canvas id="triangleS1" class="w-full h-full object-contain"></canvas>
+          <canvas id="triangleS2" class="w-full h-full object-contain"></canvas>
         </div>
       </div>
-      <button onclick="returnToMenu()" class="mt-2 text-gray-400 hover:text-white text-[10px] md:text-xs transition-colors text-center">← 返回主畫面</button>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <div class="w-full max-w-2xl flex-none relative mt-4">
+      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30">
+        <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SSS')">SSS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SAS')">SAS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('ASA')">ASA</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('AAS')">AAS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('RHS')">RHS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('NOT')">不一定</button>
+        </div>
+      </div>
+      <button onclick="returnToMenu()" class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs transition-colors whitespace-nowrap">← 返回主畫面</button>
     </div>
   </div>
 
+  <!-- 3. 連線大廳畫面 (Lobby) -->
   <div id="lobbyScreen" class="hidden glass-panel p-8 w-full max-w-md text-center space-y-6 mt-8">
-    <div id="lobbyActions" class="space-y-6">
+    <div id="loadingText" class="text-indigo-300 animate-pulse">連線至 MQTT 伺服器中...</div>
+    <div id="lobbyActions" class="hidden space-y-6">
       <p class="text-gray-300">建立房間邀請朋友，或輸入房號加入遊戲。</p>
       <button onclick="createRoom()" class="btn-primary w-full py-3 rounded-lg font-bold text-lg">建立新房間</button>
       <div class="relative flex py-2 items-center">
@@ -155,82 +192,80 @@
     </div>
   </div>
 
+  <!-- 4. 連線等待室 -->
   <div id="waitingScreen" class="hidden glass-panel p-8 w-full max-w-md text-center space-y-6 mt-8">
     <h2 class="text-2xl font-bold text-indigo-300">房間已建立</h2>
     <p class="text-gray-300">請將此房號告訴您的對手：</p>
     <div class="text-5xl font-bold text-white tracking-widest py-4 bg-gray-900 rounded-lg border border-indigo-500/50" id="displayRoomId"></div>
     <p class="text-sm text-indigo-400 animate-pulse mt-4">等待對手加入中...</p>
-    <button onclick="returnToMenu()" class="mt-6 text-gray-400 hover:text-white text-sm transition-colors w-full">← 取消並返回</button>  </div>
+    <button onclick="returnToMenu()" class="mt-6 text-gray-400 hover:text-white text-sm transition-colors w-full">← 取消並返回</button>  
+  </div>
 
+  <!-- 5. 階段過渡畫面 -->
   <div id="phaseTransition" class="hidden fixed inset-0 phase-overlay flex-col items-center justify-center space-y-4">
     <h2 id="phaseTitle" class="text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500 tracking-widest drop-shadow-[0_0_15px_rgba(236,72,153,0.8)] text-center px-4"></h2>
     <p id="phaseDesc" class="text-lg md:text-2xl text-gray-300 text-center px-4"></p>
     <div class="text-6xl font-bold text-white mt-8 animate-bounce" id="phaseCountdown">3</div>
   </div>
 
-  <div id="multiplayerScreen" class="hidden w-full max-w-6xl flex-col items-center space-y-1 flex-1 min-h-0 pb-1">
-    <div class="glass-panel p-1.5 md:p-2 w-full text-center flex flex-col items-center relative">
-      <div class="w-full flex justify-between items-center px-2 md:px-4">
-        <div class="text-xs md:text-sm">我是：<span id="myRoleLabel" class="font-bold text-yellow-400 text-sm md:text-lg"></span></div>
-        <div class="text-xs md:text-sm font-bold text-indigo-300" id="phaseIndicator">階段一 (獨立標記)</div>
-        <div class="text-xs md:text-sm">倒數：<span id="multiTimer" class="font-bold text-red-400 text-sm md:text-lg">03:30</span></div>
+  <!-- 6. 連線遊戲主畫面 (獨立置中佈局，隱藏對手) -->
+  <div id="multiplayerScreen" class="hidden w-full max-w-4xl flex-col justify-between items-center flex-1 min-h-0 pb-2">
+    <!-- Top Info -->
+    <div class="glass-panel p-3 md:p-4 w-full flex-none mb-2">
+      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2">
+        <div class="text-left w-1/3">
+          <div class="text-xs md:text-sm text-indigo-300">我是：<span id="myRoleLabel" class="font-bold text-yellow-400"></span></div>
+          <div class="text-sm md:text-lg font-bold text-indigo-400" id="phaseIndicator">階段一 (獨立標記)</div>
+        </div>
+        <div class="text-center w-1/3 relative">
+          <div id="multiSystemMsg" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none"></div>
+          <div class="text-xs md:text-sm text-indigo-300">剩餘時間</div>
+          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="multiTimer">03:30</div>
+        </div>
+        <div class="text-right w-1/3">
+          <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
+          <div class="text-xl md:text-3xl font-bold text-indigo-400" id="myMultiScore">0</div>
+        </div>
       </div>
-      <div id="multiSystemMsg" class="absolute top-7 text-xs md:text-sm font-bold text-pink-400 drop-shadow-md h-4 transition-all"></div>
-      <div class="text-base md:text-xl mt-3 md:mt-1">
-        條件：<span id="multiQuestion" class="font-bold text-yellow-400 tracking-wider">加載中...</span>
+      <div class="text-center">
+        <span class="text-base md:text-lg text-gray-300">條件：</span>
+        <span id="multiQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider inline-block transition-transform duration-200">加載中...</span>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 w-full relative flex-1 min-h-0" id="multiGrid">
-      <div id="areaA" class="glass-panel p-2 flex flex-col h-full transition-all duration-500 justify-between">
-        <div class="text-sm md:text-base font-bold border-b border-indigo-500 pb-1 flex justify-between mb-1">
-          <span>玩家 A <span id="tagA" class="text-[10px] text-yellow-400 hidden">(你)</span><br/><span class="text-[10px] font-normal">得分：<span id="scoreA" class="text-indigo-400 text-sm">0</span></span></span>
-          <span class="text-[10px] text-right">連續錯誤<br/><span id="wrongA" class="text-red-500 font-bold text-sm">0</span></span>
+    <!-- Center Canvas Area -->
+    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">
+      <div class="w-full max-w-[450px] flex flex-col items-center">
+        <div class="w-full flex justify-between text-[10px] md:text-xs mb-2 px-2 text-gray-300 border-b border-indigo-500/30 pb-1">
+            <span class="font-bold text-yellow-400">你的區域</span>
+            <span>對手得分: <span id="opponentScoreText" class="text-indigo-400 font-bold">0</span> | 連錯: <span id="opponentWrongText" class="text-red-500 font-bold">0</span></span>
         </div>
-        <div class="grid grid-cols-2 gap-2 mb-1 max-w-[340px] sm:max-w-[420px] lg:max-w-[500px] mx-auto w-full flex-1 min-h-0 items-center">
-          <canvas id="triangleA1" class="w-full h-full object-contain"></canvas>
-          <canvas id="triangleA2" class="w-full h-full object-contain"></canvas>
+        <div class="grid grid-cols-2 gap-4 w-full aspect-[2/1] items-center justify-items-center">
+          <canvas id="myCanvas1" class="w-full h-full object-contain"></canvas>
+          <canvas id="myCanvas2" class="w-full h-full object-contain"></canvas>
         </div>
-        <div class="mt-1">
-          <div class="bg-gray-900 rounded-lg p-1.5 border border-indigo-500/30">
-            <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
-            </div>
-          </div>
-          <div class="text-center text-indigo-300 mt-0.5 h-4 text-[10px] md:text-xs" id="statusA">準備中...</div>
+        <div class="text-center text-indigo-300 h-4 mt-3 text-xs md:text-sm font-bold" id="myStatusText">準備中...</div>
+      </div>
+    </div>
+
+    <!-- Bottom Buttons -->
+    <div class="w-full max-w-2xl flex-none relative mt-4">
+      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30">
+        <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('SSS')">SSS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('SAS')">SAS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('ASA')">ASA</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('AAS')">AAS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('RHS')">RHS</button>
+          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('NOT')">不一定</button>
         </div>
       </div>
-      <div id="areaB" class="glass-panel p-2 flex flex-col h-full transition-all duration-500 justify-between">
-        <div class="text-sm md:text-base font-bold border-b border-indigo-500 pb-1 flex justify-between mb-1">
-          <span>玩家 B <span id="tagB" class="text-[10px] text-yellow-400 hidden">(你)</span><br/><span class="text-[10px] font-normal">得分：<span id="scoreB" class="text-indigo-400 text-sm">0</span></span></span>
-          <span class="text-[10px] text-right">連續錯誤<br/><span id="wrongB" class="text-red-500 font-bold text-sm">0</span></span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 mb-1 max-w-[340px] sm:max-w-[420px] lg:max-w-[500px] mx-auto w-full flex-1 min-h-0 items-center">
-          <canvas id="triangleB1" class="w-full h-full object-contain"></canvas>
-          <canvas id="triangleB2" class="w-full h-full object-contain"></canvas>
-        </div>
-        <div class="mt-1">
-          <div class="bg-gray-900 rounded-lg p-1.5 border border-indigo-500/30">
-            <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
-            </div>
-          </div>
-          <div class="text-center text-indigo-300 mt-0.5 h-4 text-[10px] md:text-xs" id="statusB">準備中...</div>
-        </div>
-      </div>
+      <button onclick="returnToMenu()" class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs transition-colors whitespace-nowrap">← 返回主畫面</button>
     </div>
   </div>
 
+  <!-- 7. 教師模式畫面 -->
   <div id="teacherScreen" class="hidden w-full max-w-[1400px] flex-col items-center space-y-4 flex-1 min-h-0 pb-2 mt-2">
     <div class="glass-panel p-3 md:p-4 w-full flex justify-between items-center relative">
       <h2 class="text-xl md:text-2xl font-bold text-pink-400 flex items-center gap-2">
@@ -252,6 +287,7 @@
       </div>
   </div>
 
+  <!-- 8. 教師監控細節 (Modal) -->
   <div id="roomDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50 p-4 md:p-10">
     <div class="glass-panel w-full max-w-6xl h-full flex flex-col relative p-4 md:p-6 shadow-[0_0_40px_rgba(236,72,153,0.3)]">
       <button onclick="closeRoomDetail()" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg z-20 shadow-lg transition-transform hover:scale-105">✕ 關閉監控</button>
@@ -295,6 +331,7 @@
     </div>
   </div>
 
+  <!-- 共用結果頁面 (Modal) -->
   <div id="resultModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60]">
     <div class="glass-panel p-8 max-w-lg text-center mx-4 w-full">
       <h2 class="text-4xl font-bold text-indigo-400 mb-6" id="resultTitle">遊戲結束！</h2>
@@ -311,6 +348,7 @@
   </div>
 
   <script>
+    // --- Data Definitions ---
     const questions = [
       { known: '∠A=∠D, ∠B=∠E, ∠C=∠F', correct: 'NOT', shape: "general" },
       { known: 'AB=DE, BC=EF, ∠A=∠D', correct: 'NOT', shape: "general" },
@@ -332,16 +370,7 @@
       { known: '∠A=∠D 為直角, AB=DE, BC=EF', correct: 'RHS', shape: "RHS" }
     ];
 
-    let currentMode = 'menu'; 
-    let globalTimerInterval = null;
-    let phaseIntroInterval = null; // 新增：用於統一管理倒數計時器
-    let selectedEdges = {};
-    let selectedAngles = {};
-    let systemMsgTimeout = null;
-
-    let teacherActiveRooms = {};
-    let currentMonitorRoomId = null; 
-
+    // --- UI Methods ---
     window.showScreen = function(screenId) {
       const screens = ['menuScreen', 'soloScreen', 'lobbyScreen', 'waitingScreen', 'multiplayerScreen', 'resultModal', 'phaseTransition', 'teacherScreen'];
       screens.forEach(id => {
@@ -358,39 +387,14 @@
       });
     };
 
-    window.returnToMenu = function() {
-      cleanupGame();
-      showScreen('menuScreen');
-      currentMode = 'menu';
-    };
-
-    function cleanupGame() {
-      if (globalTimerInterval) clearInterval(globalTimerInterval);
-      if (phaseIntroInterval) clearInterval(phaseIntroInterval);
-      if (mqttClient) {
-        if (currentRoomId && myRole === 'A') mqttClient.publish(`trianglex/room/${currentRoomId}`, '', { retain: true, qos: 1 });
-        if (currentRoomId) mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
-        mqttClient.unsubscribe(`trianglex/room/+`);
-      }
-      myRole = null;
-      currentRoomId = null;
-      localGameState = null;
-      selectedEdges = {};
-      selectedAngles = {};
-      teacherActiveRooms = {};
-      closeRoomDetail(); 
+    function flashColor(id, colorClass) {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.classList.add(colorClass);
+      setTimeout(() => el.classList.remove(colorClass), 1000);
     }
 
-    function showSystemMsg(msg, colorClass = 'text-pink-400') {
-      const el = document.getElementById('multiSystemMsg');
-      el.innerText = msg;
-      el.className = `absolute top-7 text-xs md:text-sm font-bold drop-shadow-md h-4 transition-all ${colorClass}`;
-      if(systemMsgTimeout) clearTimeout(systemMsgTimeout);
-      systemMsgTimeout = setTimeout(() => { el.innerText = ''; }, 3000);
-    }
-
-    // --- 單機模式 ---
-    let soloState = { score: 0, wrong: 0, easy_idx: 0, currentQ: 0, secondsRem: 0 };
+    // --- Solo Mode ---
     window.startSoloMode = function() {
       currentMode = 'solo';
       soloState = { score: 0, wrong: 0, easy_idx: 0, currentQ: Math.floor(Math.random() * easyquestions.length), secondsRem: 3.5 * 60 };
@@ -404,15 +408,33 @@
       document.getElementById('soloScore').innerText = soloState.score;
       document.getElementById('soloWrong').innerText = soloState.wrong;
       const qArray = soloState.easy_idx < 5 ? easyquestions : questions;
-      document.getElementById('soloQuestion').innerText = qArray[soloState.currentQ].known;
-      selectedEdges = { triangleS1: {}, triangleS2: {} };
-      selectedAngles = { triangleS1: {}, triangleS2: {} };
+      
+      const qEl = document.getElementById('soloQuestion');
+      qEl.innerText = qArray[soloState.currentQ].known;
+      qEl.classList.add('text-white', 'scale-110');
+      setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
+
+      selectedEdges['triangleS1'] = {}; selectedEdges['triangleS2'] = {};
+      selectedAngles['triangleS1'] = {}; selectedAngles['triangleS2'] = {};
       drawAllTriangles(qArray[soloState.currentQ], ['triangleS1', 'triangleS2']);
     }
 
     window.submitSoloAnswer = function(ans) {
+      let hasSelection = false;
+      ['triangleS1', 'triangleS2'].forEach(id => {
+        if (Object.keys(selectedEdges[id] || {}).some(k => selectedEdges[id][k])) hasSelection = true;
+        if (Object.keys(selectedAngles[id] || {}).some(k => selectedAngles[id][k])) hasSelection = true;
+      });
+
+      if (!hasSelection) {
+        // 單機防呆：未標記僅閃爍紅字提醒，不扣分
+        flashColor('soloQuestion', 'text-red-400');
+        return;
+      }
+
       const qArray = soloState.easy_idx < 5 ? easyquestions : questions;
       const correct = qArray[soloState.currentQ].correct;
+      
       if (ans === correct) {
         soloState.score++; soloState.wrong = 0; flashColor('soloScore', 'text-green-400');
       } else {
@@ -445,23 +467,11 @@
       document.getElementById('resultText').innerText = `原因：${reason}\n\n獲得總分：${soloState.score}`;
     }
 
-    function flashColor(id, colorClass) {
-      const el = document.getElementById(id);
-      if(!el) return;
-      el.classList.add(colorClass);
-      setTimeout(() => el.classList.remove(colorClass), 1000);
-    }
+    window.restartCurrentMode = function() { 
+      if(currentMode === 'solo') startSoloMode(); 
+    };
 
-    window.restartCurrentMode = function() { if(currentMode === 'solo') startSoloMode(); };
-
-    // --- MQTT & 連線機制 ---
-    let mqttClient = null;
-    let isConnected = false;
-    let myRole = null;
-    let currentRoomId = null;
-    let localGameState = null;
-    let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
-
+    // --- MQTT & 連線邏輯 ---
     function initMqtt() {
       const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
       mqttClient = mqtt.connect(brokerUrl, { clientId: clientId, clean: true, connectTimeout: 5000 });
@@ -471,58 +481,80 @@
         document.getElementById('connectionStatus').innerText = '🟢 已連線';
         document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-green-500');
         document.getElementById('connectionStatus').classList.remove('animate-pulse');
+        document.getElementById('loadingText').classList.add('hidden');
+        document.getElementById('lobbyActions').classList.remove('hidden');
       });
 
       mqttClient.on('error', (err) => {
         console.error('MQTT Connection Error: ', err);
         document.getElementById('connectionStatus').innerText = '🔴 連線失敗';
         document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-red-500');
+        document.getElementById('loadingText').innerText = "MQTT 伺服器連線失敗，請重整或選擇單機版";
       });
 
       mqttClient.on('message', (topic, message) => {
-        // --- 教師模式攔截 ---
+        // 教師攔截
         if (currentMode === 'teacher' && topic.startsWith('trianglex/room/')) {
           const roomId = topic.split('/')[2];
           if (message.length === 0) {
             delete teacherActiveRooms[roomId];
           } else {
-            try {
-              const data = JSON.parse(message.toString());
-              teacherActiveRooms[roomId] = { data: data, lastUpdate: Date.now() };
-            } catch(e) {}
+            try { teacherActiveRooms[roomId] = { data: JSON.parse(message.toString()), lastUpdate: Date.now() }; } catch(e) {}
           }
           renderTeacherDashboard();
           return;
         }
 
-        // --- 正常連線對戰 ---
+        // 對戰處理
         if (!currentRoomId || topic !== `trianglex/room/${currentRoomId}`) return;
         if (message.length === 0) return;
         try {
           const data = JSON.parse(message.toString());
           
-          // 【核心修正1】B 加入房間的握手邏輯
           if (myRole === 'B' && currentMode === 'lobby') {
             if (data.status === 'waiting') {
               data.players.B = clientId;
-              data.status = 'ready'; // B告訴A準備好了
+              data.status = 'ready'; 
               mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(data), { retain: true, qos: 1 });
-              return; // 留在 lobby 等待 A 發送 phase1_intro
-            }
-            else if (data.status !== 'waiting' && data.status !== 'ready' && data.players.B !== clientId) {
+              return; 
+            } else if (data.status !== 'waiting' && data.status !== 'ready' && data.players.B !== clientId) {
               showLobbyError('該房間已經開始或已結束');
               mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
-              currentRoomId = null;
+              currentRoomId = null; myRole = null;
               return;
             }
           }
 
-          // 【核心修正2】A 收到 B 的 ready，正式切換到 phase1_intro，避免兩台電腦的時間差
+          // A 確認 B 已 Ready，發送伺服器統一時間與狀態
           if (myRole === 'A' && data.status === 'ready') {
               data.status = 'phase1_intro';
-              data.gameData.phaseEndTime = Date.now() + 3000; // 統一由 A 的時間為準
+              data.hostTimestamp = Date.now();
+              data.gameData.phaseEndTime = data.hostTimestamp + 3000; 
               mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(data), { retain: true, qos: 1 });
-              return; // 下一次收到 phase1_intro 時再處理
+              return; 
+          }
+
+          // B 計算出自己與主機時間的誤差 (NTP 簡易校準)
+          if (myRole === 'B' && data.hostTimestamp) {
+              timeOffset = data.hostTimestamp - Date.now() + 100; // 補償大約 100ms 傳輸延遲
+          }
+
+          // 防止同時間互相覆蓋狀態 (簡易衝突保護)
+          if (localGameState && currentMode === 'multi' && data.status === localGameState.status) {
+              if (data.status === 'phase1') {
+                  if (data.gameData[`p1_idx${myRole}`] < localGameState.gameData[`p1_idx${myRole}`]) {
+                      data.gameData[`p1_idx${myRole}`] = localGameState.gameData[`p1_idx${myRole}`];
+                      data.gameData[`p1_q${myRole}`] = localGameState.gameData[`p1_q${myRole}`];
+                      data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
+                      data.gameData[`wrong${myRole}`] = localGameState.gameData[`wrong${myRole}`];
+                  }
+              } else if (data.status === 'phase2') {
+                  if (localGameState.gameData[`ans${myRole}`] !== null && data.gameData[`ans${myRole}`] === null && data.gameData.p2_idx === localGameState.gameData.p2_idx) {
+                      data.gameData[`ans${myRole}`] = localGameState.gameData[`ans${myRole}`];
+                      data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
+                      data.gameData[`wrong${myRole}`] = localGameState.gameData[`wrong${myRole}`];
+                  }
+              }
           }
 
           handleRoomStateChange(data);
@@ -532,7 +564,63 @@
 
     window.addEventListener('load', initMqtt);
 
-    // --- 教師模式實時渲染 ---
+    window.enterLobbyMode = function() { currentMode = 'lobby'; showScreen('lobbyScreen'); };
+
+    window.createRoom = function() {
+      if (!isConnected) return showLobbyError('系統連線中，請稍後');
+      try {
+        const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
+        currentRoomId = roomId; 
+        myRole = 'A';
+        currentMode = 'waiting'; 
+        
+        const initialState = {
+          players: { A: clientId, B: null },
+          status: 'waiting',
+          gameData: {
+            scoreA: 0, scoreB: 0, wrongA: 0, wrongB: 0,
+            p1_idxA: 0, p1_qA: Math.floor(Math.random() * easyquestions.length),
+            p1_idxB: 0, p1_qB: Math.floor(Math.random() * easyquestions.length),
+            p2_idx: 0, p2_q: Math.floor(Math.random() * easyquestions.length),
+            ansA: null, ansB: null, phaseEndTime: 0, nextQTime: 0
+          },
+          selections: { 
+            A: { e1: {}, e2: {}, a1: {}, a2: {} }, 
+            B: { e1: {}, e2: {}, a1: {}, a2: {} } 
+          },
+          winner: null, reason: null
+        };
+        mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
+        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(initialState), { retain: true, qos: 1 });
+        showScreen('waitingScreen');
+        document.getElementById('displayRoomId').innerText = roomId;
+      } catch (err) { showLobbyError('建立房間失敗：' + err.message); }
+    };
+
+    window.joinRoom = function() {
+      if (!isConnected) return showLobbyError('系統連線中，請稍後');
+      const roomId = document.getElementById('roomInput').value.trim().toUpperCase();
+      if (!roomId || roomId.length !== 5) return showLobbyError('請輸入完整的5碼房號');
+      
+      currentRoomId = roomId; 
+      myRole = 'B';
+      
+      mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
+      setTimeout(() => {
+        if (currentMode === 'lobby' && currentRoomId === roomId) {
+          showLobbyError('連線逾時或該房間已失效 (房主可能已離開)');
+          mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
+          currentRoomId = null; myRole = null;
+        }
+      }, 8000); 
+    };
+
+    function showLobbyError(msg) {
+      const el = document.getElementById('lobbyError');
+      el.innerText = msg; setTimeout(() => el.innerText = '', 4000);
+    }
+
+    // --- 教師模式 (已保留原本邏輯) ---
     window.enterTeacherMode = function() {
       if (!isConnected) return alert('系統連線中，請稍後');
       currentMode = 'teacher';
@@ -561,45 +649,34 @@
       }, 5000);
     };
 
-    // 清除本地列表
     window.clearInactiveRooms = function() {
-      teacherActiveRooms = {};
-      closeRoomDetail();
-      renderTeacherDashboard();
+      teacherActiveRooms = {}; closeRoomDetail(); renderTeacherDashboard();
     };
 
-    // 徹底刪除伺服器上的所有保留房間
     window.deleteAllRoomsFromServer = function() {
       if (!isConnected) return alert('尚未連線至伺服器');
-      
       const confirmMsg = "警告：這將會從 MQTT 伺服器上「徹底刪除」所有房間的歷史紀錄！\n\n這也意味著如果其他學生正在遊戲中，他們的房間資料也會被強制刪除。您確定要執行嗎？";
-      
       if (confirm(confirmMsg)) {
         for (let roomId in teacherActiveRooms) {
           mqttClient.publish(`trianglex/room/${roomId}`, '', { retain: true, qos: 1 });
         }
-        teacherActiveRooms = {};
-        closeRoomDetail();
-        renderTeacherDashboard();
+        teacherActiveRooms = {}; closeRoomDetail(); renderTeacherDashboard();
         alert('伺服器上的所有房間紀錄已徹底清除！');
       }
     };
 
-    // 開啟放大監控
     window.openRoomDetail = function(roomId) {
         currentMonitorRoomId = roomId;
         document.getElementById('roomDetailModal').classList.remove('hidden');
         renderTeacherDashboard(); 
     };
 
-    // 關閉放大監控
     window.closeRoomDetail = function() {
         currentMonitorRoomId = null;
         document.getElementById('roomDetailModal').classList.add('hidden');
         renderTeacherDashboard(); 
     };
 
-    // 渲染教師主畫面
     function renderTeacherDashboard() {
       if (currentMode !== 'teacher') return;
       if (currentMonitorRoomId) renderRoomDetail();
@@ -640,7 +717,7 @@
         }
 
         const isMonitoring = currentMonitorRoomId === roomId;
-        const borderClass = isMonitoring ? 'border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'border-gray-600/50 hover:border-indigo-500/50 hover:scale-[1.02] cursor-pointer';
+        const borderClass = isMonitoring ? 'border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'border-gray-600/50 hover:border-indigo-500/50 cursor-pointer';
 
         const cardHTML = `
           <div onclick="openRoomDetail('${roomId}')" class="bg-gray-800/80 border ${borderClass} rounded-xl p-3 flex flex-col justify-between transition-all transform duration-200">
@@ -659,7 +736,6 @@
                 <div class="flex h-20 w-full gap-1 justify-center relative">
                   <canvas id="t_${roomId}_A1" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
                   <canvas id="t_${roomId}_A2" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
-                  ${state.status === 'finished' || state.status === 'waiting' || state.status === 'ready' ? '<div class="absolute inset-0 bg-black/50 z-10"></div>' : ''}
                 </div>
                 <div class="mt-2 flex justify-between w-full px-1">
                    <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreA : 0}</span>
@@ -673,7 +749,6 @@
                 <div class="flex h-20 w-full gap-1 justify-center relative">
                   <canvas id="t_${roomId}_B1" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
                   <canvas id="t_${roomId}_B2" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
-                  ${state.status === 'finished' || state.status === 'waiting' || state.status === 'ready' ? '<div class="absolute inset-0 bg-black/50 z-10"></div>' : ''}
                 </div>
                 <div class="mt-2 flex justify-between w-full px-1">
                    <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreB : 0}</span>
@@ -704,7 +779,6 @@
           } else if (state.status === 'phase2' || state.status === 'phase2_intro') {
               qA = qB = (gd.p2_idx < 5 ? easyquestions : questions)[gd.p2_q];
           }
-
           const sel = state.selections || { A:{e1:{}, e2:{}, a1:{}, a2:{}}, B:{e1:{}, e2:{}, a1:{}, a2:{}} };
 
           if (qA && document.getElementById(`t_${roomId}_A1`)) drawTeacherTriangles(qA, [`t_${roomId}_A1`, `t_${roomId}_A2`], sel.A, 0.6);
@@ -775,74 +849,14 @@
             } else if (state.status === 'phase2' || state.status === 'phase2_intro') {
                 qA = qB = (gd.p2_idx < 5 ? easyquestions : questions)[gd.p2_q];
             }
-
             const sel = state.selections || { A:{e1:{}, e2:{}, a1:{}, a2:{}}, B:{e1:{}, e2:{}, a1:{}, a2:{}} };
-
             if (qA && document.getElementById(`detail_A1`)) drawTeacherTriangles(qA, [`detail_A1`, `detail_A2`], sel.A, 1.2); 
             if (qB && document.getElementById(`detail_B1`)) drawTeacherTriangles(qB, [`detail_B1`, `detail_B2`], sel.B, 1.2);
         }, 50);
     }
 
-    // --- 連線玩家邏輯 ---
-    window.enterLobbyMode = function() { currentMode = 'lobby'; showScreen('lobbyScreen'); };
-    window.createRoom = function() {
-      if (!isConnected) return showLobbyError('系統連線中，請稍後');
-      try {
-        const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
-        currentRoomId = roomId; 
-        myRole = 'A';
-        currentMode = 'waiting'; // 【修正】明確設定 A 目前在等待區
-        
-        const initialState = {
-          players: { A: clientId, B: null },
-          status: 'waiting',
-          gameData: {
-            scoreA: 0, scoreB: 0, wrongA: 0, wrongB: 0,
-            p1_idxA: 0, p1_qA: Math.floor(Math.random() * easyquestions.length),
-            p1_idxB: 0, p1_qB: Math.floor(Math.random() * easyquestions.length),
-            p2_idx: 0, p2_q: Math.floor(Math.random() * easyquestions.length),
-            ansA: null, ansB: null, phaseEndTime: 0, nextQTime: 0
-          },
-          selections: { 
-            A: { e1: {}, e2: {}, a1: {}, a2: {} }, 
-            B: { e1: {}, e2: {}, a1: {}, a2: {} } 
-          },
-          winner: null, reason: null
-        };
-        mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
-        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(initialState), { retain: true, qos: 1 });
-        showScreen('waitingScreen');
-        document.getElementById('displayRoomId').innerText = roomId;
-      } catch (err) { showLobbyError('建立房間失敗：' + err.message); }
-    };
 
-    window.joinRoom = function() {
-      if (!isConnected) return showLobbyError('系統連線中，請稍後');
-      const roomId = document.getElementById('roomInput').value.trim().toUpperCase();
-      if (!roomId || roomId.length !== 5) return showLobbyError('請輸入完整的5碼房號');
-      
-      currentRoomId = roomId; 
-      myRole = 'B';
-      // 保持在 lobby，等待伺服器回傳狀態
-      
-      mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
-      
-      // 【修正3】將逾時時間延長至 8 秒，並在出現幽靈房間時能順利回報
-      setTimeout(() => {
-        if (currentMode === 'lobby' && currentRoomId === roomId) {
-          showLobbyError('連線逾時或該房間已失效 (房主可能已離開)');
-          mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
-          currentRoomId = null;
-          myRole = null;
-        }
-      }, 8000); 
-    };
-
-    function showLobbyError(msg) {
-      const el = document.getElementById('lobbyError');
-      el.innerText = msg; setTimeout(() => el.innerText = '', 4000);
-    }
-
+    // --- 玩家狀態與畫面切換 ---
     function handleRoomStateChange(data) {
       localGameState = data;
       const st = data.status;
@@ -850,12 +864,12 @@
         startMultiTimer();
       }
       if (st === 'phase1_intro') {
-        showPhaseIntro("進入第一階段", "個人答題，必須在圖形上標記邊角才能答對");
+        showPhaseIntro("進入第一階段", "個人答題，必須在圖形上標記邊角才能答對", data.gameData.phaseEndTime);
       } else if (st === 'phase1') {
         if(currentMode !== 'multi') startMultiUI();
         updatePhase1UI(data);
       } else if (st === 'phase2_intro') {
-        showPhaseIntro("進入第二階段", "雙方共用題目，搶答模式 (不需標記)");
+        showPhaseIntro("進入第二階段", "雙方共用題目，搶答模式 (不需標記)", data.gameData.phaseEndTime);
       } else if (st === 'phase2') {
         if(currentMode !== 'multi') startMultiUI();
         updatePhase2UI(data);
@@ -864,84 +878,95 @@
       }
     }
 
-    // 【修正】獨立控制視覺倒數，避免受設備時間差干擾
-    function showPhaseIntro(title, desc) {
-      if (currentMode === 'transition') return; // 防止重複觸發
+    function showPhaseIntro(title, desc, endTime) {
+      if (currentMode === 'transition') return;
       currentMode = 'transition';
       showScreen('phaseTransition');
       document.getElementById('phaseTitle').innerText = title;
       document.getElementById('phaseDesc').innerText = desc;
       
-      let count = 3;
-      document.getElementById('phaseCountdown').innerText = count;
+      const updateCountdown = () => {
+        const now = Date.now() + (timeOffset || 0);
+        const rem = Math.max(0, endTime - now);
+        document.getElementById('phaseCountdown').innerText = Math.ceil(rem / 1000);
+      };
+      updateCountdown();
       if (phaseIntroInterval) clearInterval(phaseIntroInterval);
-      phaseIntroInterval = setInterval(() => {
-        count--;
-        if(count >= 0) document.getElementById('phaseCountdown').innerText = count;
-        if(count <= 0) clearInterval(phaseIntroInterval);
-      }, 1000);
+      phaseIntroInterval = setInterval(updateCountdown, 200);
+      
+      const localRem = endTime - (Date.now() + (timeOffset || 0));
+      setTimeout(() => clearInterval(phaseIntroInterval), localRem + 500);
     }
 
     function startMultiUI() {
       currentMode = 'multi';
       showScreen('multiplayerScreen');
-      document.getElementById('restartBtn').classList.add('hidden'); 
-      document.getElementById('myRoleLabel').innerText = `玩家 ${myRole}`;
-      document.getElementById(`tagA`).classList.add('hidden');
-      document.getElementById(`tagB`).classList.add('hidden');
-      document.getElementById(`tag${myRole}`).classList.remove('hidden');
+      document.getElementById('myRoleLabel').innerText = myRole;
       if (!globalTimerInterval) startMultiTimer();
     }
 
     function updatePhase1UI(data) {
       document.getElementById('phaseIndicator').innerText = "階段一：獨立標記";
       const gd = data.gameData;
-      syncScores(gd);
-      const opponent = myRole === 'A' ? 'B' : 'A';
-      document.getElementById(`area${opponent}`).classList.add('hidden');
-      document.getElementById(`area${myRole}`).classList.add('md:col-span-2');
+      
+      document.getElementById('myMultiScore').innerText = gd[`score${myRole}`];
+      document.getElementById('opponentScoreText').innerText = myRole === 'A' ? gd.scoreB : gd.scoreA;
+      document.getElementById('opponentWrongText').innerText = myRole === 'A' ? gd.wrongB : gd.wrongA;
+      
       const qArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
       const myQ = qArray[gd[`p1_q${myRole}`]];
-      if (document.getElementById('multiQuestion').innerText !== myQ.known) {
-        document.getElementById('multiQuestion').innerText = myQ.known;
-        selectedEdges = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
-        selectedAngles = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
-        drawAllTriangles(myQ, [`triangle${myRole}1`, `triangle${myRole}2`]);
+      
+      if (previousP1Idx !== gd[`p1_idx${myRole}`]) {
+        previousP1Idx = gd[`p1_idx${myRole}`];
+        const qEl = document.getElementById('multiQuestion');
+        qEl.innerText = myQ.known;
+        qEl.classList.add('text-white', 'scale-110');
+        setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
+
+        selectedEdges['myCanvas1'] = {}; selectedEdges['myCanvas2'] = {};
+        selectedAngles['myCanvas1'] = {}; selectedAngles['myCanvas2'] = {};
+        drawAllTriangles(myQ, ['myCanvas1', 'myCanvas2']);
+        document.getElementById('myStatusText').innerText = '思考中...';
       }
     }
 
     function updatePhase2UI(data) {
       document.getElementById('phaseIndicator').innerText = "階段二：搶答模式";
       const gd = data.gameData;
-      syncScores(gd);
-      const opponent = myRole === 'A' ? 'B' : 'A';
-      document.getElementById(`area${opponent}`).classList.remove('hidden');
-      document.getElementById(`area${myRole}`).classList.remove('md:col-span-2');
+      
+      document.getElementById('myMultiScore').innerText = gd[`score${myRole}`];
+      document.getElementById('opponentScoreText').innerText = myRole === 'A' ? gd.scoreB : gd.scoreA;
+      document.getElementById('opponentWrongText').innerText = myRole === 'A' ? gd.wrongB : gd.wrongA;
+      
       const qArray = gd.p2_idx < 5 ? easyquestions : questions;
       const multiQ = qArray[gd.p2_q];
-      if (document.getElementById('multiQuestion').innerText !== multiQ.known) {
-        document.getElementById('multiQuestion').innerText = multiQ.known;
-        selectedEdges = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
-        selectedAngles = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
-        drawAllTriangles(multiQ, ['triangleA1', 'triangleA2', 'triangleB1', 'triangleB2']);
-      }
-      document.getElementById('statusA').innerText = gd.ansA ? `已送出答案` : '思考中...';
-      document.getElementById('statusB').innerText = gd.ansB ? `已送出答案` : '思考中...';
-      if (gd.nextQTime > 0 && gd.phaseWinner) {
-        showSystemMsg(`玩家 ${gd.phaseWinner} 率先答對！5 秒後進入下一題...`, 'text-green-400');
-      }
-    }
+      
+      if (previousP2Idx !== gd.p2_idx) {
+        previousP2Idx = gd.p2_idx;
+        const qEl = document.getElementById('multiQuestion');
+        qEl.innerText = multiQ.known;
+        qEl.classList.add('text-white', 'scale-110');
+        setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
 
-    function syncScores(gd) {
-      document.getElementById('scoreA').innerText = gd.scoreA;
-      document.getElementById('scoreB').innerText = gd.scoreB;
-      document.getElementById('wrongA').innerText = gd.wrongA;
-      document.getElementById('wrongB').innerText = gd.wrongB;
+        selectedEdges['myCanvas1'] = {}; selectedEdges['myCanvas2'] = {};
+        selectedAngles['myCanvas1'] = {}; selectedAngles['myCanvas2'] = {};
+        drawAllTriangles(multiQ, ['myCanvas1', 'myCanvas2']);
+      }
+
+      document.getElementById('myStatusText').innerText = gd[`ans${myRole}`] ? `✅ 已送出答案` : '思考中...';
+
+      if (gd.nextQTime > 0) {
+        if (gd.phaseWinner) {
+            showSystemMsg(`玩家 ${gd.phaseWinner} 率先答對！5 秒後進入下一題...`, 'text-green-400');
+        } else {
+            showSystemMsg(`雙方皆答錯！3 秒後進入下一題...`, 'text-red-400');
+        }
+      }
     }
 
     function normalizeEdgeStr(str) { return str.split('').sort().join(''); }
 
-    function checkSelectionMatch(knownStr, role) {
+    function checkSelectionMatch(knownStr) {
       const expE = new Set(), expA = new Set();
       knownStr.split(',').forEach(p => {
         let clean = p.replace('為直角', '').trim();
@@ -953,7 +978,7 @@
         }
       });
       let actE = new Set(), actA = new Set();
-      [`triangle${role}1`, `triangle${role}2`].forEach(id => {
+      ['myCanvas1', 'myCanvas2'].forEach(id => {
         for(let k in selectedEdges[id]) if(selectedEdges[id][k]) actE.add(normalizeEdgeStr(k));
         for(let k in selectedAngles[id]) if(selectedAngles[id][k]) actA.add(k);
       });
@@ -967,11 +992,25 @@
       if (!isConnected || !localGameState) return;
       const st = localGameState.status;
       const gd = localGameState.gameData;
+
       if (st === 'phase1') {
+        let hasSelection = false;
+        ['myCanvas1', 'myCanvas2'].forEach(id => {
+          if (Object.keys(selectedEdges[id] || {}).some(k => selectedEdges[id][k])) hasSelection = true;
+          if (Object.keys(selectedAngles[id] || {}).some(k => selectedAngles[id][k])) hasSelection = true;
+        });
+
+        if (!hasSelection) {
+          // 【防呆】不扣分，僅提示需標記
+          showSystemMsg('請先在圖形上標記邊角再作答！', 'text-yellow-400');
+          return;
+        }
+
         const qArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
         const qObj = qArray[gd[`p1_q${myRole}`]];
-        if (!checkSelectionMatch(qObj.known, myRole)) {
-          showSystemMsg('標記錯誤！請根據條件點擊正確的邊與角', 'text-red-400');
+        
+        if (!checkSelectionMatch(qObj.known)) {
+          showSystemMsg('標記的位置不符合題目條件！', 'text-red-400');
           gd[`wrong${myRole}`]++;
         } else if (ans === qObj.correct) {
           showSystemMsg('正確！', 'text-green-400');
@@ -979,8 +1018,8 @@
           gd[`p1_idx${myRole}`]++;
           const nextArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
           gd[`p1_q${myRole}`] = Math.floor(Math.random() * nextArray.length);
-          selectedEdges[`triangle${myRole}1`] = {}; selectedEdges[`triangle${myRole}2`] = {};
-          selectedAngles[`triangle${myRole}1`] = {}; selectedAngles[`triangle${myRole}2`] = {};
+          selectedEdges['myCanvas1'] = {}; selectedEdges['myCanvas2'] = {};
+          selectedAngles['myCanvas1'] = {}; selectedAngles['myCanvas2'] = {};
           syncSelectionsToMQTT();
         } else {
           showSystemMsg('答案錯誤！', 'text-red-400');
@@ -989,19 +1028,27 @@
       } 
       else if (st === 'phase2') {
         if (gd[`ans${myRole}`] !== null) return; 
+        
         const qArray = gd.p2_idx < 5 ? easyquestions : questions;
         const qObj = qArray[gd.p2_q];
+        
         gd[`ans${myRole}`] = ans;
         if (ans === qObj.correct) {
           gd[`score${myRole}`]++; gd[`wrong${myRole}`] = 0;
           if (gd.nextQTime === 0) {
-            gd.nextQTime = Date.now() + 5000;
-            gd.phaseWinner = myRole;
+            gd.nextQTime = Date.now() + timeOffset + 5000;
+            gd.phaseWinner = myRole; 
           }
         } else {
           gd[`wrong${myRole}`]++;
+          // 【雙方皆錯自動推進機制】
+          if (gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
+            gd.nextQTime = Date.now() + timeOffset + 3000;
+            gd.phaseWinner = null; 
+          }
         }
       }
+
       if (gd[`wrong${myRole}`] >= 3) {
         localGameState.status = 'finished';
         localGameState.winner = myRole === 'A' ? 'B' : 'A';
@@ -1010,14 +1057,36 @@
       publishState();
     };
 
+    function publishState() {
+      if(mqttClient && currentRoomId) {
+        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(localGameState), { retain: true, qos: 1 });
+      }
+    }
+
+    function syncSelectionsToMQTT() {
+      if(!localGameState || currentMode !== 'multi') return;
+      if(!localGameState.selections) {
+        localGameState.selections = { A: {e1:{},e2:{},a1:{},a2:{}}, B: {e1:{},e2:{},a1:{},a2:{}} };
+      }
+      localGameState.selections[myRole] = {
+        e1: selectedEdges['myCanvas1'] || {},
+        e2: selectedEdges['myCanvas2'] || {},
+        a1: selectedAngles['myCanvas1'] || {},
+        a2: selectedAngles['myCanvas2'] || {}
+      };
+      publishState();
+    }
+
     function startMultiTimer() {
       if (globalTimerInterval) clearInterval(globalTimerInterval);
       const timerElement = document.getElementById('multiTimer');
+      
       globalTimerInterval = setInterval(() => {
         if (!localGameState) return;
         const st = localGameState.status;
         const gd = localGameState.gameData;
-        const now = Date.now();
+        const now = Date.now() + timeOffset; 
+        
         if (st === 'phase1' || st === 'phase2') {
           const rem = Math.max(0, gd.phaseEndTime - now);
           const seconds = Math.floor(rem / 1000);
@@ -1025,6 +1094,7 @@
           if (seconds <= 10) timerElement.classList.add('animate-pulse');
           else timerElement.classList.remove('animate-pulse');
         }
+
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
@@ -1046,6 +1116,7 @@
             localGameState.reason = winner ? '時間到！' : '時間到！雙方平手';
             publishState();
           }
+          
           if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
@@ -1054,28 +1125,14 @@
             gd.nextQTime = 0; gd.phaseWinner = null;
             publishState();
           }
+
+          if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
+            gd.nextQTime = now + 3000;
+            gd.phaseWinner = null;
+            publishState();
+          }
         }
       }, 500);
-    }
-
-    function publishState() {
-      if(mqttClient && currentRoomId) {
-        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(localGameState), { retain: true, qos: 1 });
-      }
-    }
-
-    function syncSelectionsToMQTT() {
-      if(!localGameState || currentMode !== 'multi') return;
-      if(!localGameState.selections) {
-        localGameState.selections = { A: {e1:{},e2:{},a1:{},a2:{}}, B: {e1:{},e2:{},a1:{},a2:{}} };
-      }
-      localGameState.selections[myRole] = {
-        e1: selectedEdges[`triangle${myRole}1`] || {},
-        e2: selectedEdges[`triangle${myRole}2`] || {},
-        a1: selectedAngles[`triangle${myRole}1`] || {},
-        a2: selectedAngles[`triangle${myRole}2`] || {}
-      };
-      publishState();
     }
 
     function showMultiResultModal(data) {
@@ -1125,7 +1182,6 @@
       canvasIds.forEach((id, i) => {
         const canvas = document.getElementById(id);
         if(!canvas) return;
-        
         const baseSize = renderScale > 1 ? 300 : 100;
         canvas.width = canvas.clientWidth || baseSize; 
         canvas.height = canvas.clientHeight || baseSize;
@@ -1182,12 +1238,11 @@
       return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
     }
 
-    const allCanvasIds = ['triangleS1', 'triangleS2', 'triangleA1', 'triangleA2', 'triangleB1', 'triangleB2'];
+    const allCanvasIds = ['triangleS1', 'triangleS2', 'myCanvas1', 'myCanvas2'];
     allCanvasIds.forEach(id => {
       const canvas = document.getElementById(id);
       if(!canvas) return;
       canvas.addEventListener('click', e => {
-        if(currentMode === 'multi' && !id.includes(myRole)) return; 
         if(!canvas.triangleData) return;
         const rect = canvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) * (canvas.width / rect.width), y = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -1211,10 +1266,7 @@
         }
 
         drawTriangle(canvas, id, selectedEdges[id], selectedAngles[id], 1);
-        
-        if (currentMode === 'multi') {
-            syncSelectionsToMQTT();
-        }
+        if (currentMode === 'multi') syncSelectionsToMQTT();
       });
     });
 
