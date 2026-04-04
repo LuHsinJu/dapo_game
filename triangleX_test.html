@@ -114,13 +114,13 @@
         </div>
         <div class="text-center mb-1">
           <span class="text-base md:text-lg text-gray-300">條件：</span>
-          <span id="soloQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider">加載中...</span>
+          <span id="soloQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider transition-transform duration-200">加載中...</span>
         </div>
       </div>
       
-      <div class="grid grid-cols-2 gap-2 md:gap-4 mb-2 max-w-[400px] md:max-w-lg mx-auto w-full flex-1 min-h-0 items-center">
-        <canvas id="triangleS1" class="w-full h-full object-contain"></canvas>
-        <canvas id="triangleS2" class="w-full h-full object-contain"></canvas>
+      <div class="grid grid-cols-2 gap-2 md:gap-4 mb-2 max-w-[400px] md:max-w-lg mx-auto w-full flex-1 min-h-0 items-center justify-items-center">
+        <canvas id="triangleS1" class="w-full aspect-square"></canvas>
+        <canvas id="triangleS2" class="w-full aspect-square"></canvas>
       </div>
 
       <div class="mt-1 max-w-2xl mx-auto w-full relative">
@@ -188,7 +188,7 @@
             <div class="text-sm md:text-lg font-bold text-indigo-400" id="phaseIndicator">階段一 (獨立標記)</div>
           </div>
           <div class="text-center relative">
-            <div id="multiSystemMsg" class="absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 text-[10px] md:text-xs font-bold drop-shadow-md w-max whitespace-nowrap transition-all text-pink-400 z-10"></div>
+            <div id="multiSystemMsg" class="absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 text-[10px] md:text-xs font-bold drop-shadow-md w-max whitespace-nowrap transition-all text-pink-400 z-10 pointer-events-none"></div>
             <div class="text-[10px] md:text-xs text-indigo-300">剩餘時間</div>
             <div class="text-lg md:text-2xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="multiTimer">03:30</div>
           </div>
@@ -199,7 +199,7 @@
         </div>
         <div class="text-center mb-1">
           <span class="text-base md:text-lg text-gray-300">條件：</span>
-          <span id="multiQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider">加載中...</span>
+          <span id="multiQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider transition-transform duration-200 inline-block">加載中...</span>
         </div>
       </div>
 
@@ -212,9 +212,9 @@
             <span>玩家 A <span id="tagA" class="text-yellow-400 hidden">(你)</span></span>
             <span class="font-normal text-gray-300">分數: <span id="scoreA" class="text-indigo-400">0</span> | 連錯: <span id="wrongA" class="text-red-500">0</span></span>
           </div>
-          <div class="grid grid-cols-2 gap-2 mb-1 w-full flex-1 min-h-0 items-center">
-            <canvas id="triangleA1" class="w-full h-full object-contain"></canvas>
-            <canvas id="triangleA2" class="w-full h-full object-contain"></canvas>
+          <div class="grid grid-cols-2 gap-2 mb-1 w-full flex-1 min-h-0 items-center justify-items-center">
+            <canvas id="triangleA1" class="w-full aspect-square"></canvas>
+            <canvas id="triangleA2" class="w-full aspect-square"></canvas>
           </div>
           <div class="text-center text-indigo-300 h-4 text-[10px] md:text-xs" id="statusA">準備中...</div>
         </div>
@@ -225,9 +225,9 @@
             <span>玩家 B <span id="tagB" class="text-yellow-400 hidden">(你)</span></span>
             <span class="font-normal text-gray-300">分數: <span id="scoreB" class="text-indigo-400">0</span> | 連錯: <span id="wrongB" class="text-red-500">0</span></span>
           </div>
-          <div class="grid grid-cols-2 gap-2 mb-1 w-full flex-1 min-h-0 items-center">
-            <canvas id="triangleB1" class="w-full h-full object-contain"></canvas>
-            <canvas id="triangleB2" class="w-full h-full object-contain"></canvas>
+          <div class="grid grid-cols-2 gap-2 mb-1 w-full flex-1 min-h-0 items-center justify-items-center">
+            <canvas id="triangleB1" class="w-full aspect-square"></canvas>
+            <canvas id="triangleB2" class="w-full aspect-square"></canvas>
           </div>
           <div class="text-center text-indigo-300 h-4 text-[10px] md:text-xs" id="statusB">準備中...</div>
         </div>
@@ -299,6 +299,8 @@
     let selectedAngles = {};
     let systemMsgTimeout = null;
     let timeOffset = null; // 用於校準雙方時間差
+    let previousP1Idx = -1; // 用於第一階段換題重繪防呆
+    let previousP2Idx = -1; // 用於第二階段換題重繪防呆
 
     // --- UI Navigation ---
     window.showScreen = function(screenId) {
@@ -340,12 +342,14 @@
       selectedEdges = {};
       selectedAngles = {};
       timeOffset = null;
+      previousP1Idx = -1;
+      previousP2Idx = -1;
     }
 
     function showSystemMsg(msg, colorClass = 'text-pink-400') {
       const el = document.getElementById('multiSystemMsg');
       el.innerText = msg;
-      el.className = `absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 text-[10px] md:text-xs font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 ${colorClass}`;
+      el.className = `absolute -top-4 md:-top-5 left-1/2 transform -translate-x-1/2 text-[10px] md:text-xs font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none ${colorClass}`;
       if(systemMsgTimeout) clearTimeout(systemMsgTimeout);
       systemMsgTimeout = setTimeout(() => { el.innerText = ''; }, 3000);
     }
@@ -368,7 +372,14 @@
       document.getElementById('soloScore').innerText = soloState.score;
       document.getElementById('soloWrong').innerText = soloState.wrong;
       const qArray = soloState.easy_idx < 5 ? easyquestions : questions;
-      document.getElementById('soloQuestion').innerText = qArray[soloState.currentQ].known;
+      
+      const qEl = document.getElementById('soloQuestion');
+      qEl.innerText = qArray[soloState.currentQ].known;
+      
+      // 換題小動畫
+      qEl.classList.add('text-white', 'scale-110');
+      setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
+
       selectedEdges = { triangleS1: {}, triangleS2: {} };
       selectedAngles = { triangleS1: {}, triangleS2: {} };
       drawAllTriangles(qArray[soloState.currentQ], ['triangleS1', 'triangleS2']);
@@ -448,7 +459,6 @@
         try {
           const data = JSON.parse(message.toString());
           
-          // 玩家B加入後將控制權交還給主機(A)做同步與發起
           if (myRole === 'B' && currentMode === 'lobby') {
             if (data.status === 'waiting') {
               data.players.B = clientId;
@@ -463,7 +473,6 @@
             }
           }
 
-          // 玩家A接手，發出時間同步指令
           if (myRole === 'A' && data.status === 'player_joined') {
               data.status = 'phase1_intro';
               data.gameData.phaseEndTime = Date.now() + 3000;
@@ -472,9 +481,26 @@
               return;
           }
 
-          // B 接收 A 的時間戳以校準本地時鐘偏移量
           if (myRole === 'B' && data.hostTimestamp) {
               timeOffset = data.hostTimestamp - Date.now();
+          }
+
+          // 防止同時間送出狀態的衝突機制 (確保不會被對手把進度拉回去)
+          if (localGameState && currentMode === 'multi' && data.status === localGameState.status) {
+              if (data.status === 'phase1') {
+                  if (data.gameData[`p1_idx${myRole}`] < localGameState.gameData[`p1_idx${myRole}`]) {
+                      data.gameData[`p1_idx${myRole}`] = localGameState.gameData[`p1_idx${myRole}`];
+                      data.gameData[`p1_q${myRole}`] = localGameState.gameData[`p1_q${myRole}`];
+                      data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
+                      data.gameData[`wrong${myRole}`] = localGameState.gameData[`wrong${myRole}`];
+                  }
+              } else if (data.status === 'phase2') {
+                  if (localGameState.gameData[`ans${myRole}`] !== null && data.gameData[`ans${myRole}`] === null && data.gameData.p2_idx === localGameState.gameData.p2_idx) {
+                      data.gameData[`ans${myRole}`] = localGameState.gameData[`ans${myRole}`];
+                      data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
+                      data.gameData[`wrong${myRole}`] = localGameState.gameData[`wrong${myRole}`];
+                  }
+              }
           }
 
           handleRoomStateChange(data);
@@ -537,7 +563,6 @@
       localGameState = data;
       const st = data.status;
 
-      // 確保階段計時器順利運作
       if (!globalTimerInterval && ['phase1_intro', 'phase1', 'phase2_intro', 'phase2'].includes(st)) {
         startMultiTimer();
       }
@@ -571,7 +596,6 @@
       updateCountdown();
       const ival = setInterval(updateCountdown, 200);
       
-      // 計算並設定關閉過場的本地時長
       const localRem = endTime - (Date.now() + (timeOffset || 0));
       setTimeout(() => clearInterval(ival), localRem + 500);
     }
@@ -600,11 +624,19 @@
       const qArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
       const myQ = qArray[gd[`p1_q${myRole}`]];
       
-      if (document.getElementById('multiQuestion').innerText !== myQ.known) {
-        document.getElementById('multiQuestion').innerText = myQ.known;
-        selectedEdges = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
-        selectedAngles = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
+      // 確保換題時畫面一定會刷新
+      if (previousP1Idx !== gd[`p1_idx${myRole}`]) {
+        previousP1Idx = gd[`p1_idx${myRole}`];
+        
+        const qEl = document.getElementById('multiQuestion');
+        qEl.innerText = myQ.known;
+        qEl.classList.add('text-white', 'scale-110');
+        setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
+
+        selectedEdges[`triangle${myRole}1`] = {}; selectedEdges[`triangle${myRole}2`] = {};
+        selectedAngles[`triangle${myRole}1`] = {}; selectedAngles[`triangle${myRole}2`] = {};
         drawAllTriangles(myQ, [`triangle${myRole}1`, `triangle${myRole}2`]);
+        document.getElementById(`status${myRole}`).innerText = '思考中...';
       }
     }
 
@@ -620,8 +652,15 @@
       const qArray = gd.p2_idx < 5 ? easyquestions : questions;
       const multiQ = qArray[gd.p2_q];
       
-      if (document.getElementById('multiQuestion').innerText !== multiQ.known) {
-        document.getElementById('multiQuestion').innerText = multiQ.known;
+      // 確保換題時畫面一定會刷新
+      if (previousP2Idx !== gd.p2_idx) {
+        previousP2Idx = gd.p2_idx;
+        
+        const qEl = document.getElementById('multiQuestion');
+        qEl.innerText = multiQ.known;
+        qEl.classList.add('text-white', 'scale-110');
+        setTimeout(() => qEl.classList.remove('text-white', 'scale-110'), 300);
+
         selectedEdges = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
         selectedAngles = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
         drawAllTriangles(multiQ, ['triangleA1', 'triangleA2', 'triangleB1', 'triangleB2']);
@@ -686,7 +725,7 @@
         const qObj = qArray[gd[`p1_q${myRole}`]];
         
         if (!checkSelectionMatch(qObj.known, myRole)) {
-          showSystemMsg('標記錯誤！請根據條件點擊正確的邊與角', 'text-red-400');
+          showSystemMsg('請先在圖形上正確標記「邊」與「角」再作答！', 'text-red-400');
           gd[`wrong${myRole}`]++;
         } else if (ans === qObj.correct) {
           showSystemMsg('正確！', 'text-green-400');
@@ -694,9 +733,6 @@
           gd[`p1_idx${myRole}`]++;
           const nextArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
           gd[`p1_q${myRole}`] = Math.floor(Math.random() * nextArray.length);
-          // 清除標記狀態迎接下一題
-          selectedEdges[`triangle${myRole}1`] = {}; selectedEdges[`triangle${myRole}2`] = {};
-          selectedAngles[`triangle${myRole}1`] = {}; selectedAngles[`triangle${myRole}2`] = {};
         } else {
           showSystemMsg('答案錯誤！', 'text-red-400');
           gd[`wrong${myRole}`]++;
@@ -713,11 +749,10 @@
           gd[`score${myRole}`]++; gd[`wrong${myRole}`] = 0;
           if (gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + (timeOffset || 0) + 5000;
-            gd.phaseWinner = myRole; // 記錄誰先觸發了倒數
+            gd.phaseWinner = myRole; 
           }
         } else {
           gd[`wrong${myRole}`]++;
-          // 若雙方都答錯且尚未排定進入下一題
           if (gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + (timeOffset || 0) + 3000;
             gd.phaseWinner = null; 
@@ -749,7 +784,7 @@
         if (!localGameState) return;
         const st = localGameState.status;
         const gd = localGameState.gameData;
-        const now = Date.now() + (timeOffset || 0); // 採用校準後的時間
+        const now = Date.now() + (timeOffset || 0); 
         
         if (st === 'phase1' || st === 'phase2') {
           const rem = Math.max(0, gd.phaseEndTime - now);
@@ -762,15 +797,15 @@
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 90000; // 90 秒
+            gd.phaseEndTime = now + 90000; 
             publishState();
           } else if (st === 'phase1' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2_intro';
-            gd.phaseEndTime = now + 3000; // 3 秒
+            gd.phaseEndTime = now + 3000; 
             publishState();
           } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2';
-            gd.phaseEndTime = now + 120000; // 120 秒
+            gd.phaseEndTime = now + 120000; 
             publishState();
           } else if (st === 'phase2' && now > gd.phaseEndTime) {
             const scA = gd.scoreA, scB = gd.scoreB;
@@ -781,18 +816,15 @@
             publishState();
           }
           
-          // Phase 2: Next question trigger (某方答對後經過 5 秒, 或雙方答錯經過 3 秒)
           if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
             gd.p2_q = Math.floor(Math.random() * qArray.length);
-            // 重置雙方答案與計時
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
             publishState();
           }
 
-          // 防呆：極端並發情況下兩人皆錯，手動補位
           if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
             gd.nextQTime = now + 3000;
             gd.phaseWinner = null;
