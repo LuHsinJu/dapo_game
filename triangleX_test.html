@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TRIANGLE X 全等召喚 - 教師實時監控版</title>
+  <title>TRIANGLE X 全等召喚</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -80,7 +80,7 @@
     let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
     
     let timeOffset = 0; 
-    let lastSeenHostTimestamp = 0; // 新增：用於防護玩家B時間偏移錯亂
+    let lastSeenHostTimestamp = 0;
     
     let previousP1Idx = -1;
     let previousP2Idx = -1;
@@ -392,6 +392,7 @@
       setTimeout(() => el.classList.remove(colorClass), 1000);
     }
 
+    // 【重要修復】解決返回鍵卡住與全域變數無法重置的問題
     window.returnToMenu = function() {
       cleanupGame();
       showScreen('menuScreen');
@@ -399,11 +400,12 @@
     };
 
     function cleanupGame() {
-      if (globalTimerInterval) clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
+      if (phaseIntroInterval) { clearInterval(phaseIntroInterval); phaseIntroInterval = null; }
+      if (systemMsgTimeout) { clearTimeout(systemMsgTimeout); systemMsgTimeout = null; }
       
-      // MQTT Cleanup
-      if (typeof mqttClient !== 'undefined' && mqttClient && typeof currentRoomId !== 'undefined' && currentRoomId) {
-        if (typeof myRole !== 'undefined' && myRole === 'A') {
+      if (typeof mqttClient !== 'undefined' && mqttClient && currentRoomId) {
+        if (myRole === 'A') {
           mqttClient.publish(`trianglex/room/${currentRoomId}`, '', { retain: true });
         }
         mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
@@ -461,7 +463,6 @@
       });
 
       if (!hasSelection) {
-        // 單機防呆：未標記僅閃爍紅字提醒，不扣分
         flashColor('soloQuestion', 'text-red-400');
         return;
       }
@@ -482,7 +483,7 @@
     };
 
     function startSoloTimer() {
-      if (globalTimerInterval) clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       const timerElement = document.getElementById('soloTimer');
       timerElement.classList.remove('animate-pulse');
       globalTimerInterval = setInterval(() => {
@@ -495,7 +496,7 @@
     }
 
     function endSoloGame(reason) {
-      clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       document.getElementById('resultModal').classList.remove('hidden');
       document.getElementById('resultTitle').innerText = "單機挑戰結束";
       document.getElementById('resultText').innerText = `原因：${reason}\n\n獲得總分：${soloState.score}`;
@@ -527,7 +528,6 @@
       });
 
       mqttClient.on('message', (topic, message) => {
-        // 教師攔截
         if (currentMode === 'teacher' && topic.startsWith('trianglex/room/')) {
           const roomId = topic.split('/')[2];
           if (message.length === 0) {
@@ -539,7 +539,6 @@
           return;
         }
 
-        // 對戰處理
         if (!currentRoomId || topic !== `trianglex/room/${currentRoomId}`) return;
         if (message.length === 0) return;
         try {
@@ -559,7 +558,6 @@
             }
           }
 
-          // A 確認 B 已 Ready，發送伺服器統一時間與狀態
           if (myRole === 'A' && data.status === 'ready') {
               data.status = 'phase1_intro';
               data.hostTimestamp = Date.now();
@@ -568,13 +566,11 @@
               return; 
           }
 
-          // 【核心修復】精準 NTP 校準，且只在 A 確實更新時間戳時才重新校準，避免 B 時間失步亂跳
           if (myRole === 'B' && data.hostTimestamp && data.hostTimestamp !== lastSeenHostTimestamp) {
-              timeOffset = data.hostTimestamp - Date.now() + 100; // 補償大約 100ms 傳輸延遲
+              timeOffset = data.hostTimestamp - Date.now() + 100;
               lastSeenHostTimestamp = data.hostTimestamp;
           }
 
-          // 防止同時間互相覆蓋狀態 (簡易衝突保護)
           if (localGameState && currentMode === 'multi' && data.status === localGameState.status) {
               if (data.status === 'phase1') {
                   if (data.gameData[`p1_idx${myRole}`] < localGameState.gameData[`p1_idx${myRole}`]) {
@@ -664,7 +660,7 @@
       mqttClient.subscribe('trianglex/room/+');
       renderTeacherDashboard();
       
-      if (globalTimerInterval) clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       globalTimerInterval = setInterval(() => {
         const now = Date.now();
         let changed = false;
@@ -926,11 +922,11 @@
         document.getElementById('phaseCountdown').innerText = Math.ceil(rem / 1000);
       };
       updateCountdown();
-      if (phaseIntroInterval) clearInterval(phaseIntroInterval);
+      if (phaseIntroInterval) { clearInterval(phaseIntroInterval); phaseIntroInterval = null; }
       phaseIntroInterval = setInterval(updateCountdown, 200);
       
       const localRem = endTime - (Date.now() + (timeOffset || 0));
-      setTimeout(() => clearInterval(phaseIntroInterval), localRem + 500);
+      setTimeout(() => { if (phaseIntroInterval) { clearInterval(phaseIntroInterval); phaseIntroInterval = null; } }, localRem + 500);
     }
 
     function startMultiUI() {
@@ -1115,7 +1111,7 @@
     }
 
     function startMultiTimer() {
-      if (globalTimerInterval) clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       const timerElement = document.getElementById('multiTimer');
       
       globalTimerInterval = setInterval(() => {
@@ -1135,7 +1131,6 @@
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
-            // 【修復2】第一階段改為 120 秒 (2 分鐘)
             gd.phaseEndTime = now + 120000; 
             publishState();
           } else if (st === 'phase1' && now > gd.phaseEndTime) {
@@ -1144,7 +1139,6 @@
             publishState();
           } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2';
-            // 【修復3】第二階段改為 90 秒 (1 分 30 秒)
             gd.phaseEndTime = now + 90000; 
             publishState();
           } else if (st === 'phase2' && now > gd.phaseEndTime) {
@@ -1175,7 +1169,7 @@
     }
 
     function showMultiResultModal(data) {
-      clearInterval(globalTimerInterval);
+      if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       document.getElementById('resultModal').classList.remove('hidden');
       const win = data.winner;
       let title = win === myRole ? "🎉 你贏了！" : (win ? "💀 你輸了..." : "🤝 平手！");
