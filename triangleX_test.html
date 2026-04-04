@@ -61,7 +61,6 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
   </style>
   
-  <!-- 【修正1】將所有的全域變數宣告移到最頂端，解決 ReferenceError -->
   <script>
     let currentMode = 'menu'; 
     let globalTimerInterval = null;
@@ -79,7 +78,10 @@
     let currentRoomId = null;
     let localGameState = null;
     let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
-    let timeOffset = 0; // 用於校準雙方時間差
+    
+    let timeOffset = 0; 
+    let lastSeenHostTimestamp = 0; // 新增：用於防護玩家B時間偏移錯亂
+    
     let previousP1Idx = -1;
     let previousP2Idx = -1;
   </script>
@@ -87,7 +89,7 @@
 <body class="h-screen flex flex-col items-center p-2 overflow-hidden">
 
   <!-- 標題區 -->
-  <div class="flex flex-col items-center w-full max-w-6xl mb-2 mt-2 flex-none">
+  <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-2 flex-none">
     <div class="flex items-center justify-center">
       <h1 class="text-2xl md:text-4xl text-center flex items-baseline gap-2 md:gap-3 esports-title">
         TRIANGLE X <span class="text-sm md:text-lg tracking-widest font-sans">全等召喚</span>
@@ -122,9 +124,9 @@
   </div>
 
   <!-- 2. 單機挑戰畫面 -->
-  <div id="soloScreen" class="hidden w-full max-w-4xl flex-col justify-between items-center flex-1 min-h-0 pb-2">
+  <div id="soloScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-1 min-h-0 space-y-4 md:space-y-6 pb-2">
     <!-- Top Info -->
-    <div class="glass-panel p-3 md:p-4 w-full flex-none mb-2">
+    <div class="glass-panel p-3 md:p-4 w-full flex-none">
       <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2">
         <div class="text-left w-1/3">
           <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
@@ -146,18 +148,16 @@
     </div>
 
     <!-- Center Canvas Area -->
-    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">
-      <div class="w-full max-w-[450px]">
-        <div class="grid grid-cols-2 gap-4 w-full aspect-[2/1] items-center justify-items-center">
-          <canvas id="triangleS1" class="w-full h-full object-contain"></canvas>
-          <canvas id="triangleS2" class="w-full h-full object-contain"></canvas>
-        </div>
+    <div class="w-full max-w-[360px] md:max-w-[480px] flex-none">
+      <div class="grid grid-cols-2 gap-3 w-full">
+        <div class="w-full aspect-square"><canvas id="triangleS1" class="w-full h-full block"></canvas></div>
+        <div class="w-full aspect-square"><canvas id="triangleS2" class="w-full h-full block"></canvas></div>
       </div>
     </div>
 
     <!-- Bottom Buttons -->
     <div class="w-full max-w-2xl flex-none relative mt-4">
-      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30">
+      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30 shadow-lg">
         <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
         <div class="flex flex-wrap justify-center gap-2">
           <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SSS')">SSS</button>
@@ -168,7 +168,7 @@
           <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('NOT')">不一定</button>
         </div>
       </div>
-      <button onclick="returnToMenu()" class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs transition-colors whitespace-nowrap">← 返回主畫面</button>
+      <button onclick="returnToMenu()" class="absolute -bottom-6 md:-bottom-8 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs md:text-sm transition-colors whitespace-nowrap">← 返回主畫面</button>
     </div>
   </div>
 
@@ -209,21 +209,21 @@
   </div>
 
   <!-- 6. 連線遊戲主畫面 (獨立置中佈局，隱藏對手) -->
-  <div id="multiplayerScreen" class="hidden w-full max-w-4xl flex-col justify-between items-center flex-1 min-h-0 pb-2">
+  <div id="multiplayerScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-1 min-h-0 space-y-3 md:space-y-5 pb-2">
     <!-- Top Info -->
-    <div class="glass-panel p-3 md:p-4 w-full flex-none mb-2">
-      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2">
+    <div class="glass-panel p-3 md:p-4 w-full flex-none">
+      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2 relative">
         <div class="text-left w-1/3">
-          <div class="text-xs md:text-sm text-indigo-300">我是：<span id="myRoleLabel" class="font-bold text-yellow-400"></span></div>
+          <div class="text-[10px] md:text-xs text-indigo-300">我是：<span id="myRoleLabel" class="font-bold text-yellow-400"></span></div>
           <div class="text-sm md:text-lg font-bold text-indigo-400" id="phaseIndicator">階段一 (獨立標記)</div>
         </div>
         <div class="text-center w-1/3 relative">
           <div id="multiSystemMsg" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none"></div>
-          <div class="text-xs md:text-sm text-indigo-300">剩餘時間</div>
+          <div class="text-[10px] md:text-xs text-indigo-300">剩餘時間</div>
           <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="multiTimer">03:30</div>
         </div>
         <div class="text-right w-1/3">
-          <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
+          <div class="text-[10px] md:text-xs text-indigo-300">目前得分</div>
           <div class="text-xl md:text-3xl font-bold text-indigo-400" id="myMultiScore">0</div>
         </div>
       </div>
@@ -234,23 +234,21 @@
     </div>
 
     <!-- Center Canvas Area -->
-    <div class="flex-1 w-full flex flex-col justify-center items-center min-h-0">
-      <div class="w-full max-w-[450px] flex flex-col items-center">
-        <div class="w-full flex justify-between text-[10px] md:text-xs mb-2 px-2 text-gray-300 border-b border-indigo-500/30 pb-1">
-            <span class="font-bold text-yellow-400">你的區域</span>
-            <span>對手得分: <span id="opponentScoreText" class="text-indigo-400 font-bold">0</span> | 連錯: <span id="opponentWrongText" class="text-red-500 font-bold">0</span></span>
-        </div>
-        <div class="grid grid-cols-2 gap-4 w-full aspect-[2/1] items-center justify-items-center">
-          <canvas id="myCanvas1" class="w-full h-full object-contain"></canvas>
-          <canvas id="myCanvas2" class="w-full h-full object-contain"></canvas>
-        </div>
-        <div class="text-center text-indigo-300 h-4 mt-3 text-xs md:text-sm font-bold" id="myStatusText">準備中...</div>
+    <div class="w-full max-w-[360px] md:max-w-[480px] flex flex-col items-center flex-none">
+      <div class="w-full flex justify-between text-[10px] md:text-xs mb-2 px-2 text-gray-300 border-b border-indigo-500/30 pb-1">
+          <span class="font-bold text-yellow-400">你的區域</span>
+          <span>對手得分: <span id="opponentScoreText" class="text-indigo-400 font-bold">0</span> | 連錯: <span id="opponentWrongText" class="text-red-500 font-bold">0</span></span>
       </div>
+      <div class="grid grid-cols-2 gap-3 w-full">
+        <div class="w-full aspect-square"><canvas id="myCanvas1" class="w-full h-full block"></canvas></div>
+        <div class="w-full aspect-square"><canvas id="myCanvas2" class="w-full h-full block"></canvas></div>
+      </div>
+      <div class="text-center text-indigo-300 h-4 mt-2 text-xs md:text-sm font-bold" id="myStatusText">準備中...</div>
     </div>
 
     <!-- Bottom Buttons -->
     <div class="w-full max-w-2xl flex-none relative mt-4">
-      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30">
+      <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30 shadow-lg">
         <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
         <div class="flex flex-wrap justify-center gap-2">
           <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('SSS')">SSS</button>
@@ -261,7 +259,7 @@
           <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('NOT')">不一定</button>
         </div>
       </div>
-      <button onclick="returnToMenu()" class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs transition-colors whitespace-nowrap">← 返回主畫面</button>
+      <button onclick="returnToMenu()" class="absolute -bottom-6 md:-bottom-8 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs md:text-sm transition-colors whitespace-nowrap">← 返回主畫面</button>
     </div>
   </div>
 
@@ -306,9 +304,9 @@
             <span class="text-red-500">錯: <span id="detailWrongA">0</span></span>
           </div>
           <div class="text-yellow-400 font-bold text-lg mb-4 text-center h-6 w-full" id="detailQA">題目載入中...</div>
-          <div class="flex h-48 sm:h-64 md:h-80 w-full gap-2 justify-center flex-1">
-            <canvas id="detail_A1" class="w-1/2 h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas>
-            <canvas id="detail_A2" class="w-1/2 h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas>
+          <div class="flex w-full gap-2 justify-center flex-1 min-h-0 items-center">
+            <div class="w-1/2 aspect-square"><canvas id="detail_A1" class="w-full h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas></div>
+            <div class="w-1/2 aspect-square"><canvas id="detail_A2" class="w-full h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas></div>
           </div>
           <div class="mt-4 text-lg font-bold text-indigo-300 bg-gray-800 px-4 py-1.5 rounded-full" id="detailStatusA">思考中...</div>
         </div>
@@ -321,9 +319,9 @@
             <span class="text-red-500">錯: <span id="detailWrongB">0</span></span>
           </div>
           <div class="text-yellow-400 font-bold text-lg mb-4 text-center h-6 w-full" id="detailQB">題目載入中...</div>
-          <div class="flex h-48 sm:h-64 md:h-80 w-full gap-2 justify-center flex-1">
-            <canvas id="detail_B1" class="w-1/2 h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas>
-            <canvas id="detail_B2" class="w-1/2 h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas>
+          <div class="flex w-full gap-2 justify-center flex-1 min-h-0 items-center">
+            <div class="w-1/2 aspect-square"><canvas id="detail_B1" class="w-full h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas></div>
+            <div class="w-1/2 aspect-square"><canvas id="detail_B2" class="w-full h-full object-contain border border-gray-700 bg-gray-800 rounded-lg shadow-inner"></canvas></div>
           </div>
           <div class="mt-4 text-lg font-bold text-indigo-300 bg-gray-800 px-4 py-1.5 rounded-full" id="detailStatusB">思考中...</div>
         </div>
@@ -392,6 +390,42 @@
       if(!el) return;
       el.classList.add(colorClass);
       setTimeout(() => el.classList.remove(colorClass), 1000);
+    }
+
+    window.returnToMenu = function() {
+      cleanupGame();
+      showScreen('menuScreen');
+      currentMode = 'menu';
+    };
+
+    function cleanupGame() {
+      if (globalTimerInterval) clearInterval(globalTimerInterval);
+      
+      // MQTT Cleanup
+      if (typeof mqttClient !== 'undefined' && mqttClient && typeof currentRoomId !== 'undefined' && currentRoomId) {
+        if (typeof myRole !== 'undefined' && myRole === 'A') {
+          mqttClient.publish(`trianglex/room/${currentRoomId}`, '', { retain: true });
+        }
+        mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
+      }
+      
+      myRole = null;
+      currentRoomId = null;
+      localGameState = null;
+      selectedEdges = {};
+      selectedAngles = {};
+      timeOffset = 0;
+      lastSeenHostTimestamp = 0;
+      previousP1Idx = -1;
+      previousP2Idx = -1;
+    }
+
+    function showSystemMsg(msg, colorClass = 'text-pink-400') {
+      const el = document.getElementById('multiSystemMsg');
+      el.innerText = msg;
+      el.className = `absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none ${colorClass}`;
+      if(systemMsgTimeout) clearTimeout(systemMsgTimeout);
+      systemMsgTimeout = setTimeout(() => { el.innerText = ''; }, 3000);
     }
 
     // --- Solo Mode ---
@@ -534,9 +568,10 @@
               return; 
           }
 
-          // B 計算出自己與主機時間的誤差 (NTP 簡易校準)
-          if (myRole === 'B' && data.hostTimestamp) {
+          // 【核心修復】精準 NTP 校準，且只在 A 確實更新時間戳時才重新校準，避免 B 時間失步亂跳
+          if (myRole === 'B' && data.hostTimestamp && data.hostTimestamp !== lastSeenHostTimestamp) {
               timeOffset = data.hostTimestamp - Date.now() + 100; // 補償大約 100ms 傳輸延遲
+              lastSeenHostTimestamp = data.hostTimestamp;
           }
 
           // 防止同時間互相覆蓋狀態 (簡易衝突保護)
@@ -620,7 +655,7 @@
       el.innerText = msg; setTimeout(() => el.innerText = '', 4000);
     }
 
-    // --- 教師模式 (已保留原本邏輯) ---
+    // --- 教師模式 ---
     window.enterTeacherMode = function() {
       if (!isConnected) return alert('系統連線中，請稍後');
       currentMode = 'teacher';
@@ -734,8 +769,8 @@
                 <div class="text-xs text-gray-300 mb-1">玩家 A ${state.players.A ? '🟢' : '🔴'}</div>
                 <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextA}</div>
                 <div class="flex h-20 w-full gap-1 justify-center relative">
-                  <canvas id="t_${roomId}_A1" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
-                  <canvas id="t_${roomId}_A2" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
+                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
                 </div>
                 <div class="mt-2 flex justify-between w-full px-1">
                    <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreA : 0}</span>
@@ -747,8 +782,8 @@
                 <div class="text-xs text-gray-300 mb-1">玩家 B ${state.players.B ? '🟢' : '🔴'}</div>
                 <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextB}</div>
                 <div class="flex h-20 w-full gap-1 justify-center relative">
-                  <canvas id="t_${roomId}_B1" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
-                  <canvas id="t_${roomId}_B2" class="w-1/2 h-full object-contain border border-gray-700 rounded bg-gray-800"></canvas>
+                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
                 </div>
                 <div class="mt-2 flex justify-between w-full px-1">
                    <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreB : 0}</span>
@@ -901,7 +936,6 @@
     function startMultiUI() {
       currentMode = 'multi';
       showScreen('multiplayerScreen');
-      document.getElementById('myRoleLabel').innerText = myRole;
       if (!globalTimerInterval) startMultiTimer();
     }
 
@@ -909,6 +943,7 @@
       document.getElementById('phaseIndicator').innerText = "階段一：獨立標記";
       const gd = data.gameData;
       
+      document.getElementById('myRoleLabel').innerText = myRole;
       document.getElementById('myMultiScore').innerText = gd[`score${myRole}`];
       document.getElementById('opponentScoreText').innerText = myRole === 'A' ? gd.scoreB : gd.scoreA;
       document.getElementById('opponentWrongText').innerText = myRole === 'A' ? gd.wrongB : gd.wrongA;
@@ -934,6 +969,7 @@
       document.getElementById('phaseIndicator').innerText = "階段二：搶答模式";
       const gd = data.gameData;
       
+      document.getElementById('myRoleLabel').innerText = myRole;
       document.getElementById('myMultiScore').innerText = gd[`score${myRole}`];
       document.getElementById('opponentScoreText').innerText = myRole === 'A' ? gd.scoreB : gd.scoreA;
       document.getElementById('opponentWrongText').innerText = myRole === 'A' ? gd.wrongB : gd.wrongA;
@@ -1001,7 +1037,6 @@
         });
 
         if (!hasSelection) {
-          // 【防呆】不扣分，僅提示需標記
           showSystemMsg('請先在圖形上標記邊角再作答！', 'text-yellow-400');
           return;
         }
@@ -1041,7 +1076,6 @@
           }
         } else {
           gd[`wrong${myRole}`]++;
-          // 【雙方皆錯自動推進機制】
           if (gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + timeOffset + 3000;
             gd.phaseWinner = null; 
@@ -1058,6 +1092,9 @@
     };
 
     function publishState() {
+      if (myRole === 'A') {
+         localGameState.hostTimestamp = Date.now();
+      }
       if(mqttClient && currentRoomId) {
         mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(localGameState), { retain: true, qos: 1 });
       }
@@ -1098,7 +1135,8 @@
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 90000; 
+            // 【修復2】第一階段改為 120 秒 (2 分鐘)
+            gd.phaseEndTime = now + 120000; 
             publishState();
           } else if (st === 'phase1' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2_intro';
@@ -1106,7 +1144,8 @@
             publishState();
           } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2';
-            gd.phaseEndTime = now + 120000; 
+            // 【修復3】第二階段改為 90 秒 (1 分 30 秒)
+            gd.phaseEndTime = now + 90000; 
             publishState();
           } else if (st === 'phase2' && now > gd.phaseEndTime) {
             const scA = gd.scoreA, scB = gd.scoreB;
@@ -1147,11 +1186,16 @@
     // --- 畫布與圖形繪製 ---
     function getTriangleData(questionData, canvas, isRightSide) {
       const isRHS = questionData.shape === 'RHS';
-      const p = canvas.width * 0.1, w = canvas.width - p, h = canvas.height - p;
+      const size = Math.min(canvas.clientWidth, canvas.clientHeight) || 200;
+      const px = Math.max(25, size * 0.15);
+      const pyTop = Math.max(35, size * 0.2);
+      const pyBot = Math.max(30, size * 0.15);
+      const w = size - px;
+      const h = size - pyBot;
       const labels = isRightSide ? ['D','E','F'] : ['A','B','C'];
       const points = isRHS ? 
-        [ {x:p,y:h,label:labels[0]}, {x:w,y:h,label:labels[1]}, {x:p,y:p,label:labels[2]} ] :
-        [ {x:p,y:h,label:labels[0]}, {x:w,y:h,label:labels[1]}, {x:canvas.width/2,y:p,label:labels[2]} ];
+        [ {x:px,y:h,label:labels[0]}, {x:w,y:h,label:labels[1]}, {x:px,y:pyTop,label:labels[2]} ] :
+        [ {x:px,y:h,label:labels[0]}, {x:w,y:h,label:labels[1]}, {x:size/2,y:pyTop,label:labels[2]} ];
       return {
         points,
         angles: [
@@ -1171,8 +1215,9 @@
       canvasIds.forEach((id, i) => {
         const canvas = document.getElementById(id);
         if(!canvas) return;
-        canvas.width = canvas.clientWidth || 300; 
-        canvas.height = canvas.clientHeight || 300;
+        const size = Math.min(canvas.clientWidth, canvas.clientHeight) || 200;
+        canvas.width = size; 
+        canvas.height = size;
         canvas.triangleData = getTriangleData(questionData, canvas, i % 2 !== 0);
         drawTriangle(canvas, id, selectedEdges[id], selectedAngles[id], 1);
       });
@@ -1182,9 +1227,9 @@
       canvasIds.forEach((id, i) => {
         const canvas = document.getElementById(id);
         if(!canvas) return;
-        const baseSize = renderScale > 1 ? 300 : 100;
-        canvas.width = canvas.clientWidth || baseSize; 
-        canvas.height = canvas.clientHeight || baseSize;
+        const size = Math.min(canvas.clientWidth, canvas.clientHeight) || (renderScale > 1 ? 300 : 100);
+        canvas.width = size; 
+        canvas.height = size;
         canvas.triangleData = getTriangleData(questionData, canvas, i % 2 !== 0);
         
         const edges = i === 0 ? selectionData.e1 : selectionData.e2;
