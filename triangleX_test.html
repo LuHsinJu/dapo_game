@@ -62,14 +62,14 @@
     }
   </style>
 </head>
-<body class="h-screen flex flex-col items-center p-2 overflow-hidden">
+<body class="h-screen flex flex-col items-center p-1 md:p-2 overflow-hidden">
 
   <!-- 標題區 (全域共用) -->
   <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-1">
     <div class="flex items-center justify-center">
-      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" class="w-10 h-10 md:w-12 md:h-12 mr-3 object-contain hidden sm:block" onerror="this.style.display='none'">
-      <h1 class="text-2xl md:text-4xl text-center flex items-baseline gap-3 esports-title">
-        TRIANGLE X <span class="text-base md:text-xl tracking-widest font-sans">全等召喚</span>
+      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" class="w-8 h-8 md:w-10 md:h-10 mr-2 object-contain hidden sm:block" onerror="this.style.display='none'">
+      <h1 class="text-xl md:text-3xl text-center flex items-baseline gap-2 md:gap-3 esports-title">
+        TRIANGLE X <span class="text-sm md:text-lg tracking-widest font-sans">全等召喚</span>
       </h1>
     </div>
   </div>
@@ -95,47 +95,49 @@
   </div>
 
   <!-- 2. 單機挑戰畫面 (共用) -->
-  <div id="soloScreen" class="hidden w-full max-w-3xl flex-col items-center space-y-2 flex-1 min-h-0 pb-2">
-    <div class="glass-panel p-3 md:p-5 w-full flex flex-col h-full">
-      <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-3">
-        <div class="text-left">
-          <div class="text-xs md:text-sm text-indigo-300">目前得分</div>
-          <div class="text-xl md:text-3xl font-bold text-indigo-400" id="soloScore">0</div>
+  <div id="soloScreen" class="hidden w-full max-w-3xl flex-col items-center space-y-1 flex-1 min-h-0 pb-1">
+    <div class="glass-panel p-2 md:p-4 w-full flex flex-col h-full justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-indigo-500 pb-1 mb-1">
+          <div class="text-left">
+            <div class="text-[10px] md:text-xs text-indigo-300">目前得分</div>
+            <div class="text-lg md:text-2xl font-bold text-indigo-400" id="soloScore">0</div>
+          </div>
+          <div class="text-center">
+            <div class="text-[10px] md:text-xs text-indigo-300">剩餘時間</div>
+            <div class="text-lg md:text-2xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] md:text-xs text-indigo-300">連續錯誤</div>
+            <div class="text-lg md:text-2xl font-bold text-red-500" id="soloWrong">0</div>
+          </div>
         </div>
-        <div class="text-center">
-          <div class="text-xs md:text-sm text-indigo-300">剩餘時間</div>
-          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="soloTimer">03:30</div>
+        <div class="text-center mb-1">
+          <span class="text-base md:text-lg text-gray-300">條件：</span>
+          <span id="soloQuestion" class="text-lg md:text-xl font-bold text-yellow-400 tracking-wider">加載中...</span>
         </div>
-        <div class="text-right">
-          <div class="text-xs md:text-sm text-indigo-300">連續錯誤</div>
-          <div class="text-xl md:text-3xl font-bold text-red-500" id="soloWrong">0</div>
-        </div>
-      </div>
-      <div class="text-center mb-3">
-        <span class="text-lg md:text-xl text-gray-300">條件：</span>
-        <span id="soloQuestion" class="text-xl md:text-2xl font-bold text-yellow-400 tracking-wider">加載中...</span>
       </div>
       
-      <!-- 壓縮圖形高度上限 -->
-      <div class="grid grid-cols-2 gap-3 mb-4 max-w-[340px] md:max-w-md mx-auto w-full flex-1 min-h-0 items-center">
-        <canvas id="triangleS1" class="w-full aspect-square"></canvas>
-        <canvas id="triangleS2" class="w-full aspect-square"></canvas>
+      <!-- 擴大圖形高度上限 -->
+      <div class="grid grid-cols-2 gap-2 md:gap-4 mb-2 max-w-[400px] md:max-w-lg mx-auto w-full flex-1 min-h-0 items-center">
+        <canvas id="triangleS1" class="w-full h-full object-contain"></canvas>
+        <canvas id="triangleS2" class="w-full h-full object-contain"></canvas>
       </div>
 
-      <div class="mt-auto max-w-2xl mx-auto w-full">
-        <div class="bg-gray-900 bg-opacity-70 rounded-xl p-2 md:p-3 border border-indigo-500/30">
-          <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
-          <div class="flex flex-wrap justify-center gap-2">
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('SSS')">SSS</button>
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('SAS')">SAS</button>
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('ASA')">ASA</button>
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('AAS')">AAS</button>
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('RHS')">RHS</button>
-            <button class="btn-primary px-3 py-1.5 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-lg" onclick="submitSoloAnswer('NOT')">不一定</button>
+      <div class="mt-1 max-w-2xl mx-auto w-full">
+        <div class="bg-gray-900 bg-opacity-70 rounded-xl p-1.5 md:p-2 border border-indigo-500/30">
+          <div class="text-center text-indigo-200 mb-1 text-[10px] md:text-xs font-semibold">請選擇全等依據：</div>
+          <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SSS')">SSS</button>
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('SAS')">SAS</button>
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('ASA')">ASA</button>
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('AAS')">AAS</button>
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('RHS')">RHS</button>
+            <button class="btn-primary px-3 py-1 md:px-5 md:py-2 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitSoloAnswer('NOT')">不一定</button>
           </div>
         </div>
       </div>
-      <button onclick="returnToMenu()" class="mt-3 text-gray-400 hover:text-white text-xs md:text-sm transition-colors text-center">← 返回主畫面</button>
+      <button onclick="returnToMenu()" class="mt-2 text-gray-400 hover:text-white text-[10px] md:text-xs transition-colors text-center">← 返回主畫面</button>
     </div>
   </div>
 
@@ -176,70 +178,74 @@
   </div>
 
   <!-- 6. 連線遊戲主畫面 -->
-  <div id="multiplayerScreen" class="hidden w-full max-w-6xl flex-col items-center space-y-2 flex-1 min-h-0 pb-2">
-    <div class="glass-panel p-2 md:p-3 w-full text-center flex flex-col items-center relative">
+  <div id="multiplayerScreen" class="hidden w-full max-w-6xl flex-col items-center space-y-1 flex-1 min-h-0 pb-1">
+    <div class="glass-panel p-1.5 md:p-2 w-full text-center flex flex-col items-center relative">
       <div class="w-full flex justify-between items-center px-2 md:px-4">
-        <div class="text-sm md:text-lg">我是：<span id="myRoleLabel" class="font-bold text-yellow-400 text-base md:text-xl"></span></div>
-        <div class="text-sm md:text-lg font-bold" id="phaseIndicator">階段一 (獨立標記)</div>
-        <div class="text-sm md:text-lg">倒數：<span id="multiTimer" class="font-bold text-red-400">03:30</span></div>
+        <div class="text-xs md:text-sm">我是：<span id="myRoleLabel" class="font-bold text-yellow-400 text-sm md:text-lg"></span></div>
+        <div class="text-xs md:text-sm font-bold text-indigo-300" id="phaseIndicator">階段一 (獨立標記)</div>
+        <div class="text-xs md:text-sm">倒數：<span id="multiTimer" class="font-bold text-red-400 text-sm md:text-lg">03:30</span></div>
       </div>
       
-      <!-- 狀態提示列 (答對或標記錯誤提示) -->
-      <div id="multiSystemMsg" class="absolute top-10 text-sm md:text-lg font-bold text-pink-400 drop-shadow-md h-6 transition-all"></div>
+      <!-- 狀態提示列 -->
+      <div id="multiSystemMsg" class="absolute top-7 text-xs md:text-sm font-bold text-pink-400 drop-shadow-md h-4 transition-all"></div>
       
-      <div class="text-lg md:text-2xl mt-4 md:mt-2">
+      <div class="text-base md:text-xl mt-3 md:mt-1">
         條件：<span id="multiQuestion" class="font-bold text-yellow-400 tracking-wider">加載中...</span>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full relative flex-1 min-h-0" id="multiGrid">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 w-full relative flex-1 min-h-0" id="multiGrid">
       <!-- 玩家 A 區 -->
-      <div id="areaA" class="glass-panel p-3 flex flex-col h-full transition-all duration-500">
-        <div class="text-base md:text-lg font-bold border-b border-indigo-500 pb-1 flex justify-between mb-2">
-          <span>玩家 A <span id="tagA" class="text-xs text-yellow-400 hidden">(你)</span><br/><span class="text-xs font-normal">得分：<span id="scoreA" class="text-indigo-400 text-base">0</span></span></span>
-          <span class="text-xs text-right">連續錯誤<br/><span id="wrongA" class="text-red-500 font-bold text-base">0</span></span>
+      <div id="areaA" class="glass-panel p-2 flex flex-col h-full transition-all duration-500 justify-between">
+        <div class="text-sm md:text-base font-bold border-b border-indigo-500 pb-1 flex justify-between mb-1">
+          <span>玩家 A <span id="tagA" class="text-[10px] text-yellow-400 hidden">(你)</span><br/><span class="text-[10px] font-normal">得分：<span id="scoreA" class="text-indigo-400 text-sm">0</span></span></span>
+          <span class="text-[10px] text-right">連續錯誤<br/><span id="wrongA" class="text-red-500 font-bold text-sm">0</span></span>
         </div>
-        <div class="grid grid-cols-2 gap-2 mb-2 max-w-[260px] sm:max-w-[320px] mx-auto w-full flex-1 min-h-0 items-center">
-          <canvas id="triangleA1" class="w-full aspect-square"></canvas>
-          <canvas id="triangleA2" class="w-full aspect-square"></canvas>
+        
+        <div class="grid grid-cols-2 gap-2 mb-1 max-w-[340px] sm:max-w-[420px] lg:max-w-[500px] mx-auto w-full flex-1 min-h-0 items-center">
+          <canvas id="triangleA1" class="w-full h-full object-contain"></canvas>
+          <canvas id="triangleA2" class="w-full h-full object-contain"></canvas>
         </div>
-        <div class="mt-auto">
-          <div class="bg-gray-900 rounded-lg p-2 border border-indigo-500/30">
+        
+        <div class="mt-1">
+          <div class="bg-gray-900 rounded-lg p-1.5 border border-indigo-500/30">
             <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
             </div>
           </div>
-          <div class="text-center text-indigo-300 mt-1 h-5 text-xs md:text-sm" id="statusA">準備中...</div>
+          <div class="text-center text-indigo-300 mt-0.5 h-4 text-[10px] md:text-xs" id="statusA">準備中...</div>
         </div>
       </div>
 
       <!-- 玩家 B 區 -->
-      <div id="areaB" class="glass-panel p-3 flex flex-col h-full transition-all duration-500">
-        <div class="text-base md:text-lg font-bold border-b border-indigo-500 pb-1 flex justify-between mb-2">
-          <span>玩家 B <span id="tagB" class="text-xs text-yellow-400 hidden">(你)</span><br/><span class="text-xs font-normal">得分：<span id="scoreB" class="text-indigo-400 text-base">0</span></span></span>
-          <span class="text-xs text-right">連續錯誤<br/><span id="wrongB" class="text-red-500 font-bold text-base">0</span></span>
+      <div id="areaB" class="glass-panel p-2 flex flex-col h-full transition-all duration-500 justify-between">
+        <div class="text-sm md:text-base font-bold border-b border-indigo-500 pb-1 flex justify-between mb-1">
+          <span>玩家 B <span id="tagB" class="text-[10px] text-yellow-400 hidden">(你)</span><br/><span class="text-[10px] font-normal">得分：<span id="scoreB" class="text-indigo-400 text-sm">0</span></span></span>
+          <span class="text-[10px] text-right">連續錯誤<br/><span id="wrongB" class="text-red-500 font-bold text-sm">0</span></span>
         </div>
-        <div class="grid grid-cols-2 gap-2 mb-2 max-w-[260px] sm:max-w-[320px] mx-auto w-full flex-1 min-h-0 items-center">
-          <canvas id="triangleB1" class="w-full aspect-square"></canvas>
-          <canvas id="triangleB2" class="w-full aspect-square"></canvas>
+        
+        <div class="grid grid-cols-2 gap-2 mb-1 max-w-[340px] sm:max-w-[420px] lg:max-w-[500px] mx-auto w-full flex-1 min-h-0 items-center">
+          <canvas id="triangleB1" class="w-full h-full object-contain"></canvas>
+          <canvas id="triangleB2" class="w-full h-full object-contain"></canvas>
         </div>
-        <div class="mt-auto">
-          <div class="bg-gray-900 rounded-lg p-2 border border-indigo-500/30">
+        
+        <div class="mt-1">
+          <div class="bg-gray-900 rounded-lg p-1.5 border border-indigo-500/30">
             <div class="flex flex-wrap justify-center gap-1.5 md:gap-2">
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
-              <button class="btn-primary px-2 py-1.5 md:px-3 md:py-2 rounded shadow font-bold text-xs md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SSS')">SSS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('SAS')">SAS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('ASA')">ASA</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('AAS')">AAS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('RHS')">RHS</button>
+              <button class="btn-primary px-2 py-1 md:px-3 md:py-1.5 rounded shadow font-bold text-[10px] md:text-sm" onclick="submitMultiAnswer('NOT')">不一定</button>
             </div>
           </div>
-          <div class="text-center text-indigo-300 mt-1 h-5 text-xs md:text-sm" id="statusB">準備中...</div>
+          <div class="text-center text-indigo-300 mt-0.5 h-4 text-[10px] md:text-xs" id="statusB">準備中...</div>
         </div>
       </div>
     </div>
@@ -336,7 +342,7 @@
     function showSystemMsg(msg, colorClass = 'text-pink-400') {
       const el = document.getElementById('multiSystemMsg');
       el.innerText = msg;
-      el.className = `absolute top-14 text-lg font-bold drop-shadow-md h-6 transition-all ${colorClass}`;
+      el.className = `absolute top-7 text-xs md:text-sm font-bold drop-shadow-md h-4 transition-all ${colorClass}`;
       if(systemMsgTimeout) clearTimeout(systemMsgTimeout);
       systemMsgTimeout = setTimeout(() => { el.innerText = ''; }, 3000);
     }
@@ -444,8 +450,8 @@
           if (myRole === 'B' && currentMode === 'lobby') {
             if (data.status === 'waiting') {
               data.players.B = clientId;
-              data.status = 'phase1_intro'; // 直接進入第一階段提示
-              data.gameData.phaseEndTime = Date.now() + 3000; // 3秒過場
+              data.status = 'phase1_intro'; 
+              data.gameData.phaseEndTime = Date.now() + 3000; 
               mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(data), { retain: true });
               return; 
             } else if (data.status !== 'waiting' && data.players.B !== clientId) {
@@ -475,10 +481,8 @@
           status: 'waiting',
           gameData: {
             scoreA: 0, scoreB: 0, wrongA: 0, wrongB: 0,
-            // Phase 1 獨立題目進度
             p1_idxA: 0, p1_qA: Math.floor(Math.random() * easyquestions.length),
             p1_idxB: 0, p1_qB: Math.floor(Math.random() * easyquestions.length),
-            // Phase 2 共同題目進度
             p2_idx: 0, p2_q: Math.floor(Math.random() * easyquestions.length),
             ansA: null, ansB: null, 
             phaseEndTime: 0, nextQTime: 0
@@ -514,11 +518,9 @@
 
     // --- State & UI Updates ---
     function handleRoomStateChange(data) {
-      const prevStatus = localGameState ? localGameState.status : '';
       localGameState = data;
       const st = data.status;
 
-      // 確保即使在過場動畫中，主機的背景計時器也有在運作，以利自動切換階段
       if (!globalTimerInterval && ['phase1_intro', 'phase1', 'phase2_intro', 'phase2'].includes(st)) {
         startMultiTimer();
       }
@@ -570,7 +572,6 @@
       const gd = data.gameData;
       syncScores(gd);
       
-      // 隱藏對手區域並放大自己區域
       const opponent = myRole === 'A' ? 'B' : 'A';
       document.getElementById(`area${opponent}`).classList.add('hidden');
       document.getElementById(`area${myRole}`).classList.add('md:col-span-2');
@@ -578,7 +579,6 @@
       const qArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
       const myQ = qArray[gd[`p1_q${myRole}`]];
       
-      // 若題目有更新，重繪
       if (document.getElementById('multiQuestion').innerText !== myQ.known) {
         document.getElementById('multiQuestion').innerText = myQ.known;
         selectedEdges = { triangleA1:{}, triangleA2:{}, triangleB1:{}, triangleB2:{} };
@@ -592,7 +592,6 @@
       const gd = data.gameData;
       syncScores(gd);
       
-      // 恢復雙方區域顯示
       const opponent = myRole === 'A' ? 'B' : 'A';
       document.getElementById(`area${opponent}`).classList.remove('hidden');
       document.getElementById(`area${myRole}`).classList.remove('md:col-span-2');
@@ -610,9 +609,8 @@
       document.getElementById('statusA').innerText = gd.ansA ? `已送出答案` : '思考中...';
       document.getElementById('statusB').innerText = gd.ansB ? `已送出答案` : '思考中...';
 
-      // 如果有 nextQTime 代表有人答對了，顯示 5 秒提示
-      if (gd.nextQTime > 0) {
-        showSystemMsg(`玩家 ${gd.phaseWinner} 答對！5 秒後進入下一題...`, 'text-green-400');
+      if (gd.nextQTime > 0 && gd.phaseWinner) {
+        showSystemMsg(`玩家 ${gd.phaseWinner} 率先答對！5 秒後進入下一題...`, 'text-green-400');
       }
     }
 
@@ -659,7 +657,6 @@
         const qArray = gd[`p1_idx${myRole}`] < 5 ? easyquestions : questions;
         const qObj = qArray[gd[`p1_q${myRole}`]];
         
-        // 階段一：強制檢查標記
         if (!checkSelectionMatch(qObj.known, myRole)) {
           showSystemMsg('標記錯誤！請根據條件點擊正確的邊與角', 'text-red-400');
           gd[`wrong${myRole}`]++;
@@ -675,7 +672,9 @@
         }
       } 
       else if (st === 'phase2') {
-        if (gd.nextQTime > 0 || gd[`ans${myRole}`] !== null) return; 
+        // 修改：允許在 5 秒倒數期間，對手依然可以作答，只要他還沒答過
+        if (gd[`ans${myRole}`] !== null) return; 
+        
         const qArray = gd.p2_idx < 5 ? easyquestions : questions;
         const qObj = qArray[gd.p2_q];
         
@@ -684,7 +683,7 @@
           gd[`score${myRole}`]++; gd[`wrong${myRole}`] = 0;
           if (gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + 5000;
-            gd.phaseWinner = myRole;
+            gd.phaseWinner = myRole; // 記錄誰先觸發了倒數
           }
         } else {
           gd[`wrong${myRole}`]++;
@@ -710,7 +709,6 @@
         const gd = localGameState.gameData;
         const now = Date.now();
         
-        // Timer UI Display (For active game phases)
         if (st === 'phase1' || st === 'phase2') {
           const rem = Math.max(0, gd.phaseEndTime - now);
           const seconds = Math.floor(rem / 1000);
@@ -719,19 +717,18 @@
           else timerElement.classList.remove('animate-pulse');
         }
 
-        // Host ONLY State Transitions
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 90000; // 第一階段 90 秒
+            gd.phaseEndTime = now + 90000; // 90 秒
             publishState();
           } else if (st === 'phase1' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2_intro';
-            gd.phaseEndTime = now + 3000; // 過場 3 秒
+            gd.phaseEndTime = now + 3000; // 3 秒
             publishState();
           } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2';
-            gd.phaseEndTime = now + 120000; // 第二階段 120 秒
+            gd.phaseEndTime = now + 120000; // 120 秒
             publishState();
           } else if (st === 'phase2' && now > gd.phaseEndTime) {
             const scA = gd.scoreA, scB = gd.scoreB;
@@ -741,20 +738,16 @@
             localGameState.reason = winner ? '時間到！' : '時間到！雙方平手';
             publishState();
           }
-          // Phase 2: Next question trigger
+          
+          // Phase 2: Next question trigger (某方答對後經過 5 秒)
           if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
             gd.p2_q = Math.floor(Math.random() * qArray.length);
+            // 重置雙方答案與計時
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
             publishState();
-          }
-          
-          // Phase 2 防呆：如果兩人都答錯了卡住，自動經過 3 秒後進入下一題
-          if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
-             gd.nextQTime = now + 3000; 
-             publishState();
           }
         }
       }, 500);
