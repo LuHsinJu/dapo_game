@@ -57,6 +57,28 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
   </style>
+  <style>
+    @keyframes rgbAnimation {
+        0%, 100% { 
+            color: red; 
+            text-shadow: 0 0 10px orange, 0 0 20px yellow, 0 0 40px blue; 
+        }
+        33% { 
+            color: green; 
+            text-shadow: 0 0 10px blue, 0 0 20px violet, 0 0 40px red; 
+        }
+        66% { 
+            color: blue; 
+            text-shadow: 0 0 10px indigo, 0 0 20px red, 0 0 40px orange; 
+        }
+    }
+
+    .rgb-text {
+        animation: rgbAnimation 5s linear infinite;
+        font-family: 'Audiowide', sans-serif;
+        font-weight: bold;
+    }
+  </style>
   
   <script>
     // --- 核心變數 ---
