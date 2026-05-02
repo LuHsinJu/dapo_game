@@ -7,6 +7,7 @@
   <!-- 字體 -->
   <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Audiowide&display=swap" rel="stylesheet">
   <style>
     body {
@@ -70,6 +71,40 @@
         font-weight: bold;
     }
   </style>
+  
+  <script>
+    // --- 核心變數 ---
+    let currentMode = 'menu'; 
+    let globalTimerInterval = null;
+    let phaseIntroInterval = null; 
+    let selectedEdges = {};
+    let selectedAngles = {};
+    let systemMsgTimeout = null;
+
+    let teacherActiveRooms = {};
+    let currentMonitorRoomId = null; 
+
+    // 多人單機競賽相關變數
+    let isMultiSolo = false;
+    let multiSoloRoomId = null;
+    let multiSoloPlayers = {}; // 教師端用來儲存所有學生成績
+    let myMultiSoloRoomId = null; // 教師建立的競賽房號
+
+    let mqttClient = null;
+    let isConnected = false;
+    let myRole = null;
+    let myName = "玩家";
+    let currentRoomId = null;
+    let localGameState = null;
+    let soloState = null; 
+    let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
+    
+    let timeOffset = 0; 
+    let lastSeenHostTimestamp = 0;
+    
+    let previousP1Idx = -1;
+    let previousP2Idx = -1;
+  </script>
 </head>
 <body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen flex flex-col items-center justify-start p-1 space-y-6 font-sans" style="background: black;">
   <!-- 標題 -->
@@ -144,7 +179,7 @@
 
   <!-- 3. 連線大廳畫面 (Lobby) -->
   <div id="lobbyScreen" class="hidden glass-panel p-8 w-full max-w-md text-center space-y-6 mt-8">
-    <div id="loadingText" class="text-indigo-300 animate-pulse">連線至伺服器中...</div>
+    <div id="loadingText" class="text-indigo-300 animate-pulse">連線至 MQTT 伺服器中...</div>
     <div id="lobbyActions" class="hidden space-y-6">
       <p class="text-gray-300">建立房間邀請朋友，或輸入房號加入遊戲。</p>
       <button onclick="createRoom()" class="btn-primary w-full py-3 rounded-lg font-bold text-lg">建立新房間</button>
@@ -368,121 +403,7 @@
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // --- 核心變數 ---
-    let currentMode = 'menu'; 
-    let globalTimerInterval = null;
-    let phaseIntroInterval = null; 
-    let selectedEdges = {};
-    let selectedAngles = {};
-    let systemMsgTimeout = null;
-
-    let teacherActiveRooms = {};
-    let currentMonitorRoomId = null; 
-
-    let isMultiSolo = false;
-    let multiSoloRoomId = null;
-    let multiSoloPlayers = {}; 
-    let myMultiSoloRoomId = null; 
-
-    let isConnected = false;
-    let myRole = null;
-    let myName = "玩家";
-    let currentRoomId = null;
-    let localGameState = null;
-    let soloState = null; 
-    let clientId = 'tx_' + Math.random().toString(16).substr(2, 8);
-    
-    let timeOffset = 0; 
-    let lastSeenHostTimestamp = 0;
-    
-    let previousP1Idx = -1;
-    let previousP2Idx = -1;
-
-    // --- Firebase 變數 ---
-    let auth, db, appId;
-    let user = null;
-    let unsubRoom = null;
-    let unsubTeacher = null;
-    let unsubMultiSoloPlayers = null;
-
-    // --- Firebase 初始化 ---
-    async function initFirebase() {
-        try {
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'trianglex-app';
-
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-
-            onAuthStateChanged(auth, (u) => {
-                user = u;
-                if (user) {
-                    isConnected = true;
-                    document.getElementById('connectionStatus').innerText = '🟢 已連線';
-                    document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-green-500');
-                    document.getElementById('connectionStatus').classList.remove('animate-pulse');
-                    document.getElementById('loadingText').classList.add('hidden');
-                    document.getElementById('lobbyActions').classList.remove('hidden');
-                }
-            });
-        } catch (error) {
-            console.error('Firebase Setup Error:', error);
-            document.getElementById('connectionStatus').innerText = '🔴 連線失敗';
-            document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-red-500');
-            document.getElementById('loadingText').innerText = "伺服器連線失敗，請重整或選擇單機版";
-        }
-    }
-    window.addEventListener('load', initFirebase);
-
-    // --- Firebase Helpers ---
-    async function publishRoomData(roomId, data) {
-        if (!user) return;
-        try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-            if (data === '') {
-                await deleteDoc(docRef);
-            } else {
-                await setDoc(docRef, data, { merge: false });
-            }
-        } catch(e) { console.error("publishRoomData error", e); }
-    }
-
-    async function publishMultiSoloPlayer(roomId, pId, data) {
-        if (!user) return;
-        try {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'multiSoloPlayers', roomId + '_' + pId);
-            if (data === '') {
-                await deleteDoc(docRef);
-            } else {
-                await setDoc(docRef, data, { merge: false });
-            }
-        } catch(e) { console.error("publishMultiSoloPlayer error", e); }
-    }
-
-    function subscribeToRoom(roomId) {
-        if (unsubRoom) { unsubRoom(); unsubRoom = null; }
-        if (!user) return;
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-        unsubRoom = onSnapshot(docRef, (docSnap) => {
-            if (!docSnap.exists()) {
-                 handleRoomMessage(roomId, '');
-            } else {
-                 handleRoomMessage(roomId, docSnap.data());
-            }
-        }, (error) => console.error("Room snapshot error:", error));
-    }
-
+  <script>
     // --- Data Definitions ---
     const questions = [
       // 不一定全等 AAA
@@ -670,25 +591,22 @@
       if (phaseIntroInterval) { clearInterval(phaseIntroInterval); phaseIntroInterval = null; }
       if (systemMsgTimeout) { clearTimeout(systemMsgTimeout); systemMsgTimeout = null; }
       
-      if (user) {
+      if (typeof mqttClient !== 'undefined' && mqttClient) {
         if (currentRoomId && myRole === 'A') {
-          publishRoomData(currentRoomId, '');
+          mqttClient.publish(`trianglex/room/${currentRoomId}`, '', { retain: true });
         }
         if (currentRoomId) {
-          if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+          mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
         }
         if (currentMode === 'solo') {
           // 清除老師面板上的單機房間狀態
-          publishRoomData('solo_' + clientId, '');
+          mqttClient.publish(`trianglex/room/solo_${clientId}`, '', { retain: true });
         }
         if (isMultiSolo && multiSoloRoomId) {
           // 清除自己於多人競賽中的記錄
-          publishMultiSoloPlayer(multiSoloRoomId, clientId, '');
+          mqttClient.publish(`trianglex/room/${multiSoloRoomId}/player/${clientId}`, '', { retain: true });
         }
       }
-      
-      if (unsubTeacher) { unsubTeacher(); unsubTeacher = null; }
-      if (unsubMultiSoloPlayers) { unsubMultiSoloPlayers(); unsubMultiSoloPlayers = null; }
       
       myRole = null;
       currentRoomId = null;
@@ -749,7 +667,7 @@
         winner: null, reason: reason
       };
       
-      publishRoomData(`solo_${clientId}`, state);
+      mqttClient.publish(`trianglex/room/solo_${clientId}`, JSON.stringify(state), { retain: true, qos: 1 });
     }
 
     // --- 多人單機模式廣播功能 ---
@@ -762,7 +680,7 @@
             status: isFinished ? 'finished' : 'playing',
             reason: reason
         };
-        publishMultiSoloPlayer(multiSoloRoomId, clientId, pData);
+        mqttClient.publish(`trianglex/room/${multiSoloRoomId}/player/${clientId}`, JSON.stringify(pData), { retain: true, qos: 1 });
     }
 
     // --- Solo Mode (支援一般單機與多人競賽) ---
@@ -882,9 +800,62 @@
       if(currentMode === 'solo') startSoloMode(); 
     };
 
-    // --- 連線處理邏輯 ---
-    function handleRoomMessage(roomId, data) {
-        if (data === '') {
+    // --- MQTT & 連線邏輯 ---
+    function initMqtt() {
+      const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+      mqttClient = mqtt.connect(brokerUrl, { clientId: clientId, clean: true, connectTimeout: 5000 });
+      
+      mqttClient.on('connect', () => {
+        isConnected = true;
+        document.getElementById('connectionStatus').innerText = '🟢 已連線';
+        document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-green-500');
+        document.getElementById('connectionStatus').classList.remove('animate-pulse');
+        document.getElementById('loadingText').classList.add('hidden');
+        document.getElementById('lobbyActions').classList.remove('hidden');
+      });
+
+      mqttClient.on('error', (err) => {
+        console.error('MQTT Connection Error: ', err);
+        document.getElementById('connectionStatus').innerText = '🔴 連線失敗';
+        document.getElementById('connectionStatus').classList.replace('text-yellow-500', 'text-red-500');
+        document.getElementById('loadingText').innerText = "MQTT 伺服器連線失敗，請重整或選擇單機版";
+      });
+
+      mqttClient.on('message', (topic, message) => {
+        
+        // 教師接收 多人單機競賽 玩家資料更新
+        if (currentMode === 'teacher' && topic.startsWith('trianglex/room/') && topic.includes('/player/')) {
+            const parts = topic.split('/');
+            const roomId = parts[2];
+            const pId = parts[4];
+            
+            if (roomId === myMultiSoloRoomId) { 
+                if (message.length === 0) {
+                    delete multiSoloPlayers[pId];
+                } else {
+                    try { multiSoloPlayers[pId] = JSON.parse(message.toString()); } catch(e) {}
+                }
+                renderMultiSoloLeaderboard();
+            }
+            return;
+        }
+
+        // 教師接收一般房間列表更新
+        if (currentMode === 'teacher' && topic.startsWith('trianglex/room/') && !topic.includes('/player/')) {
+          const roomId = topic.split('/')[2];
+          if (message.length === 0) {
+            delete teacherActiveRooms[roomId];
+          } else {
+            try { teacherActiveRooms[roomId] = { data: JSON.parse(message.toString()), lastUpdate: Date.now() }; } catch(e) {}
+          }
+          renderTeacherDashboard();
+          return;
+        }
+
+        if (!currentRoomId || topic !== `trianglex/room/${currentRoomId}`) return;
+        
+        // 偵測房間被關閉
+        if (message.length === 0) {
              if (currentMode === 'multi_solo_waiting' || currentMode === 'multi_solo_playing') {
                  alert('老師已關閉此競賽房間！');
                  returnToMenu();
@@ -893,6 +864,8 @@
         }
         
         try {
+          const data = JSON.parse(message.toString());
+          
           // --- 多人單機競賽房判斷 (學生端) ---
           if (data.type === 'multi_solo') {
               if (currentMode === 'lobby' && data.status === 'waiting') {
@@ -906,7 +879,7 @@
                   
                   // Publish 自己進入了等待室
                   const pData = { name: myName, score: 0, wrong: 0, status: 'waiting', reason: null };
-                  publishMultiSoloPlayer(currentRoomId, clientId, pData);
+                  mqttClient.publish(`trianglex/room/${currentRoomId}/player/${clientId}`, JSON.stringify(pData), { retain: true, qos: 1 });
               }
               else if (currentMode === 'multi_solo_waiting' && data.status === 'playing') {
                   // 老師按下開始，學生全體自動進入單機挑戰
@@ -922,11 +895,11 @@
               data.players.B = clientId;
               data.playerNames.B = myName; // 同步玩家 B 的名稱
               data.status = 'ready'; 
-              publishRoomData(currentRoomId, data);
+              mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(data), { retain: true, qos: 1 });
               return; 
             } else if (data.status !== 'waiting' && data.status !== 'ready' && data.players.B !== clientId) {
               showLobbyError('該房間已經開始或已結束');
-              if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+              mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
               currentRoomId = null; myRole = null;
               return;
             }
@@ -936,7 +909,7 @@
               data.status = 'phase1_intro';
               data.hostTimestamp = Date.now();
               data.gameData.phaseEndTime = data.hostTimestamp + 3000; 
-              publishRoomData(currentRoomId, data);
+              mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(data), { retain: true, qos: 1 });
               return; 
           }
 
@@ -977,7 +950,10 @@
 
           handleRoomStateChange(data);
         } catch (e) { console.error(e); }
+      });
     }
+
+    window.addEventListener('load', initMqtt);
 
     window.enterLobbyMode = function() { currentMode = 'lobby'; showScreen('lobbyScreen'); };
 
@@ -987,7 +963,7 @@
         const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
         currentRoomId = roomId; 
         myRole = 'A';
-        myName = document.getElementById('globalNameInput').value.trim() || '玩家A'; 
+        myName = document.getElementById('globalNameInput').value.trim() || '玩家A'; // 取得房主暱稱
         currentMode = 'waiting'; 
         
         const initialState = {
@@ -1008,8 +984,8 @@
           },
           winner: null, reason: null
         };
-        subscribeToRoom(currentRoomId);
-        publishRoomData(currentRoomId, initialState);
+        mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
+        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(initialState), { retain: true, qos: 1 });
         showScreen('waitingScreen');
         document.getElementById('displayRoomId').innerText = roomId;
       } catch (err) { showLobbyError('建立房間失敗：' + err.message); }
@@ -1023,11 +999,11 @@
       currentRoomId = roomId; 
       myRole = 'B';
       
-      subscribeToRoom(currentRoomId);
+      mqttClient.subscribe(`trianglex/room/${currentRoomId}`);
       setTimeout(() => {
         if (currentMode === 'lobby' && currentRoomId === roomId) {
           showLobbyError('連線逾時或該房間已失效');
-          if (unsubRoom) { unsubRoom(); unsubRoom = null; }
+          mqttClient.unsubscribe(`trianglex/room/${currentRoomId}`);
           currentRoomId = null; myRole = null;
         }
       }, 8000); 
@@ -1063,21 +1039,8 @@
       currentMode = 'teacher';
       teacherActiveRooms = {}; 
       showScreen('teacherScreen');
-      
-      if (unsubTeacher) { unsubTeacher(); unsubTeacher = null; }
-      const roomsCol = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
-      unsubTeacher = onSnapshot(roomsCol, (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-              const roomId = change.doc.id;
-              const data = change.doc.data();
-              if (change.type === 'removed' || Object.keys(data).length === 0) {
-                  delete teacherActiveRooms[roomId];
-              } else {
-                  teacherActiveRooms[roomId] = { data: data, lastUpdate: Date.now() };
-              }
-          });
-          renderTeacherDashboard();
-      }, (error) => console.error("Teacher snapshot err:", error));
+      mqttClient.subscribe('trianglex/room/+');
+      renderTeacherDashboard();
       
       if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       globalTimerInterval = setInterval(() => {
@@ -1103,12 +1066,12 @@
       teacherActiveRooms = {}; closeRoomDetail(); renderTeacherDashboard();
     };
 
-    window.deleteAllRoomsFromServer = async function() {
+    window.deleteAllRoomsFromServer = function() {
       if (!isConnected) return alert('尚未連線至伺服器');
-      const confirmMsg = "警告：這將會從伺服器上「徹底刪除」所有房間的歷史紀錄！\n這也意味著如果其他學生正在遊戲中，他們的房間資料也會被強制刪除。您確定要執行嗎？";
+      const confirmMsg = "警告：這將會從 MQTT 伺服器上「徹底刪除」所有房間的歷史紀錄！\n這也意味著如果其他學生正在遊戲中，他們的房間資料也會被強制刪除。您確定要執行嗎？";
       if (confirm(confirmMsg)) {
         for (let roomId in teacherActiveRooms) {
-          await publishRoomData(roomId, '');
+          mqttClient.publish(`trianglex/room/${roomId}`, '', { retain: true, qos: 1 });
         }
         teacherActiveRooms = {}; closeRoomDetail(); renderTeacherDashboard();
         alert('伺服器上的所有房間紀錄已徹底清除！');
@@ -1127,30 +1090,18 @@
             host: clientId
         };
         
-        publishRoomData(myMultiSoloRoomId, initialState);
+        // 訂閱此競賽房所有玩家的資料
+        mqttClient.subscribe(`trianglex/room/${myMultiSoloRoomId}/player/+`);
+        // 建立房間
+        mqttClient.publish(`trianglex/room/${myMultiSoloRoomId}`, JSON.stringify(initialState), { retain: true, qos: 1 });
+        
         openMultiSoloPanel(myMultiSoloRoomId);
     };
 
     window.openMultiSoloPanel = function(roomId) {
         myMultiSoloRoomId = roomId;
         multiSoloPlayers = {}; // 清空並重新抓取
-        
-        if (unsubMultiSoloPlayers) { unsubMultiSoloPlayers(); unsubMultiSoloPlayers = null; }
-        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'multiSoloPlayers');
-        unsubMultiSoloPlayers = onSnapshot(colRef, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                const docId = change.doc.id;
-                if (!docId.startsWith(myMultiSoloRoomId + '_')) return;
-                const pId = docId.replace(myMultiSoloRoomId + '_', '');
-                
-                if (change.type === 'removed') {
-                    delete multiSoloPlayers[pId];
-                } else {
-                    multiSoloPlayers[pId] = change.doc.data();
-                }
-            });
-            renderMultiSoloLeaderboard();
-        }, (error) => console.error("MultiSolo snapshot err:", error));
+        mqttClient.subscribe(`trianglex/room/${roomId}/player/+`);
         
         document.getElementById('msTeacherRoomId').innerText = roomId;
         
@@ -1171,13 +1122,13 @@
         const roomData = teacherActiveRooms[myMultiSoloRoomId]?.data;
         if (roomData && roomData.status === 'waiting') {
             if (confirm("確定要關閉這個競賽房間嗎？尚未開始的競賽將直接被取消。")) {
-                publishRoomData(myMultiSoloRoomId, ''); 
+                mqttClient.publish(`trianglex/room/${myMultiSoloRoomId}`, '', { retain: true, qos: 1 }); // 刪除房間
             } else {
                 return;
             }
         }
         
-        if (unsubMultiSoloPlayers) { unsubMultiSoloPlayers(); unsubMultiSoloPlayers = null; }
+        mqttClient.unsubscribe(`trianglex/room/${myMultiSoloRoomId}/player/+`);
         myMultiSoloRoomId = null;
         multiSoloPlayers = {};
         document.getElementById('multiSoloTeacherPanel').classList.add('hidden');
@@ -1190,7 +1141,8 @@
             status: 'playing',
             host: clientId
         };
-        publishRoomData(myMultiSoloRoomId, state);
+        // 廣播開始遊戲，學生端收到會立即執行 startSoloMode(true)
+        mqttClient.publish(`trianglex/room/${myMultiSoloRoomId}`, JSON.stringify(state), { retain: true, qos: 1 });
         document.getElementById('msStartGameBtn').classList.add('hidden');
     };
 
@@ -1660,7 +1612,7 @@
         }
       }
 
-      // 檢查是否達到五次答錯門檻（僅在階段二檢查）
+      // 檢查是否達到五次答錯門檻（僅在階段二檢查，因為階段一不再增加 wrong 計數）
       if (st === 'phase2' && gd[`wrong${myRole}`] >= 5) {
         localGameState.status = 'finished';
         localGameState.winner = myRole === 'A' ? 'B' : 'A';
@@ -1673,8 +1625,8 @@
       if (myRole === 'A') {
          localGameState.hostTimestamp = Date.now();
       }
-      if(currentRoomId) {
-        publishRoomData(currentRoomId, localGameState);
+      if(mqttClient && currentRoomId) {
+        mqttClient.publish(`trianglex/room/${currentRoomId}`, JSON.stringify(localGameState), { retain: true, qos: 1 });
       }
     }
 
