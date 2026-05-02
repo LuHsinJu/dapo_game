@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TRIANGLE X 全等召喚 - 強化版</title>
+  <!-- 字體 -->
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Audiowide&display=swap" rel="stylesheet">
@@ -57,6 +59,28 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
   </style>
+  <style>
+    @keyframes rgbAnimation {
+        0%, 100% { 
+            color: red; 
+            text-shadow: 0 0 10px orange, 0 0 20px yellow, 0 0 40px blue; 
+        }
+        33% { 
+            color: green; 
+            text-shadow: 0 0 10px blue, 0 0 20px violet, 0 0 40px red; 
+        }
+        66% { 
+            color: blue; 
+            text-shadow: 0 0 10px indigo, 0 0 20px red, 0 0 40px orange; 
+        }
+    }
+
+    .rgb-text {
+        animation: rgbAnimation 5s linear infinite;
+        font-family: 'Audiowide', sans-serif;
+        font-weight: bold;
+    }
+  </style>
   
   <script>
     // --- 核心變數 ---
@@ -86,14 +110,23 @@
     let previousP2Idx = -1;
   </script>
 </head>
-<body class="h-screen flex flex-col items-center p-2 overflow-hidden">
-
+<!-- <body class="h-screen flex flex-col items-center p-2 overflow-hidden"> -->
+<body class="bg-gradient-to-br from-blue-100 to-indigo-100 min-h-screen flex flex-col items-center justify-start p-1 space-y-6 font-sans" style="background: black;">
   <!-- 標題 -->
-  <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-2 flex-none">
+   <div class="text-center p-1 w-full max-w-6xl"></div>
+    <div class="flex items-center mb-2" style="text-align: center;">
+      <img src="https://i.imgur.com/PH99mC3.png" alt="logo" width="120" height="120" class="mr-3" />
+      <h1 class="text-4xl font-bold text-indigo-700 rgb-text" style="font-size: 48px;">TRIANGLE <span style="font-size: 70px;">X</span> 全等召喚</h1>
+    </div>
+    <!-- <h1 class="text-4xl font-bold mb-2 text-indigo-700"><img src="triangleX.png" alt="logo" width="50" height="50"/>Triangle X 全等召喚</h1> -->
+    <!-- <div class="text-lg mb-2">題目：<span id="question" class="font-semibold text-indigo-800"></span></div>
+    <div class="text-md">倒數計時：<span id="timer" class="font-bold text-red-600">05:00</span></div> -->
+  </div>
+  <!-- <div class="flex flex-col items-center w-full max-w-6xl mb-1 mt-2 flex-none">
     <h1 class="text-2xl md:text-4xl text-center flex items-baseline gap-2 md:gap-3 esports-title">
       TRIANGLE X <span class="text-sm md:text-lg tracking-widest font-sans font-normal opacity-80">全等召喚</span>
     </h1>
-  </div>
+  </div> -->
 
   <!-- 1. 主選單 -->
   <div id="menuScreen" class="glass-panel p-6 w-full max-w-md text-center space-y-6 mt-4 md:mt-8 relative">
@@ -125,7 +158,7 @@
   </div>
 
   <!-- 2. 單機挑戰 -->
-  <div id="soloScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-1 min-h-0 space-y-4 pb-2">
+  <div id="soloScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-0 min-h-0 space-y-4 pb-2">
     <div class="glass-panel p-4 w-full flex-none relative">
       <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2 relative">
         <div class="text-left w-1/3"><div class="text-xs text-indigo-300">得分</div><div class="text-xl font-bold" id="soloScore">0</div></div>
@@ -147,12 +180,12 @@
     </div>
     <div class="w-full max-w-2xl bg-gray-900/80 p-3 rounded-xl border border-indigo-500/30 flex-none relative mt-4">
       <div class="flex flex-wrap justify-center gap-2">
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('SSS')">SSS</button>
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('SAS')">SAS</button>
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('ASA')">ASA</button>
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('AAS')">AAS</button>
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('RHS')">RHS</button>
-        <button class="btn-primary px-4 py-2 rounded-lg font-bold text-sm" onclick="submitSoloAnswer('NOT')">不一定</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('SSS')">SSS</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('SAS')">SAS</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('ASA')">ASA</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('AAS')">AAS</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('RHS')">RHS</button>
+        <button class="btn-primary px-5 py-3 rounded-lg font-bold text-sm" style="font-size:22px;" onclick="submitSoloAnswer('NOT')">不一定</button>
       </div>
       <button onclick="returnToMenu()" class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-gray-500 hover:text-white text-xs transition-colors whitespace-nowrap">← 返回主畫面</button>
     </div>
@@ -195,7 +228,7 @@
   </div>
 
   <!-- 6. 連線遊戲主畫面 -->
-  <div id="multiplayerScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-1 min-h-0 space-y-3 md:space-y-5 pb-2">
+  <div id="multiplayerScreen" class="hidden w-full max-w-4xl flex-col justify-center items-center flex-0 min-h-0 space-y-3 md:space-y-5 pb-2">
     <!-- Top Info -->
     <div class="glass-panel p-3 md:p-4 w-full flex-none">
       <div class="flex justify-between items-center border-b border-indigo-500 pb-2 mb-2 relative">
@@ -237,12 +270,12 @@
       <div class="bg-gray-900 bg-opacity-80 rounded-xl p-3 border border-indigo-500/30 shadow-lg">
         <div class="text-center text-indigo-200 mb-2 text-xs md:text-sm font-semibold">請選擇全等依據：</div>
         <div class="flex flex-wrap justify-center gap-2">
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('SSS')">SSS</button>
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('SAS')">SAS</button>
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('ASA')">ASA</button>
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('AAS')">AAS</button>
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('RHS')">RHS</button>
-          <button class="btn-primary px-4 py-2 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" onclick="submitMultiAnswer('NOT')">不一定</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('SSS')">SSS</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('SAS')">SAS</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('ASA')">ASA</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('AAS')">AAS</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('RHS')">RHS</button>
+          <button class="btn-primary px-5 py-3 md:px-6 md:py-3 rounded-lg shadow font-bold text-sm md:text-base" style="font-size:22px;" onclick="submitMultiAnswer('NOT')">不一定</button>
         </div>
       </div>
     </div>
