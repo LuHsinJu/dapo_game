@@ -1789,7 +1789,7 @@
         if (myRole === 'A') {
           if (st === 'phase1_intro' && now > gd.phaseEndTime) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 180000; // 第一階段 3 分鐘
+            gd.phaseEndTime = now + 60000; // 第一階段 3 分鐘
             publishState();
           } else if (st === 'phase1' && now > gd.phaseEndTime) {
             localGameState.status = 'phase2_intro';
