@@ -1031,6 +1031,8 @@
               lastSeenHostTimestamp = data.hostTimestamp;
           }
 
+          let needsRepublish = false; // 修正 1：合併未發布問題
+
           if (localGameState && currentMode === 'multi' && data.status === localGameState.status) {
               if (data.status === 'phase1') {
                   // 防回溯與狀態整合
@@ -1048,7 +1050,7 @@
                   if (data.gameData.p2_idx < localGameState.gameData.p2_idx) {
                       return; 
                   }
-                  // 雙方同時搶答時的答案整合
+                  // 雙方同時搶答時的答案整合 (修正 1)
                   if (localGameState.gameData[`ans${myRole}`] !== null && data.gameData[`ans${myRole}`] === null && data.gameData.p2_idx === localGameState.gameData.p2_idx) {
                       data.gameData[`ans${myRole}`] = localGameState.gameData[`ans${myRole}`];
                       data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
@@ -1057,11 +1059,18 @@
                           data.gameData.nextQTime = localGameState.gameData.nextQTime;
                           data.gameData.phaseWinner = localGameState.gameData.phaseWinner;
                       }
+                      needsRepublish = true; // 標記被覆蓋，需要重新廣播
                   }
               }
           }
 
           handleRoomStateChange(data);
+          
+          // 修正 1：將被對方覆蓋的答案合併後，重新推播給伺服器，解決卡死
+          if (needsRepublish) {
+              publishState();
+          }
+
         } catch (e) { console.error(e); }
     }
 
@@ -1888,43 +1897,60 @@
           else timerElement.classList.remove('animate-pulse');
         }
 
-        if (myRole === 'A') {
-          if (st === 'phase1_intro' && now > gd.phaseEndTime) {
+        // 修正 2：容錯接管機制 (Timeout Fallback)
+        // 玩家 A 立刻執行推進，玩家 B 給予 2.5 秒寬限期 (若 A 卡死，B 自動接管)
+        const gracePeriod = myRole === 'A' ? 0 : 2500; 
+
+        if (st === 'phase1_intro' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 180000; // 第一階段 3 分鐘
+            gd.phaseEndTime = now + 180000 - gracePeriod; // 第一階段 3 分鐘
             publishState();
-          } else if (st === 'phase1' && now > gd.phaseEndTime) {
+        } else if (st === 'phase1' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase2_intro';
-            gd.phaseEndTime = now + 3000; 
+            gd.phaseEndTime = now + 3000 - gracePeriod; 
             publishState();
-          } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
+        } else if (st === 'phase2_intro' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase2';
-            gd.phaseEndTime = now + 120000; // 第二階段 2 分鐘
+            gd.phaseEndTime = now + 120000 - gracePeriod; // 第二階段 2 分鐘
             publishState();
-          } else if (st === 'phase2' && now > gd.phaseEndTime) {
+        } else if (st === 'phase2' && now > gd.phaseEndTime + gracePeriod) {
             const scA = gd.scoreA, scB = gd.scoreB;
             const winner = scA > scB ? 'A' : (scB > scA ? 'B' : null);
             localGameState.status = 'finished';
             localGameState.winner = winner;
             localGameState.reason = winner ? '時間到！' : '時間到！雙方平手';
             publishState();
-          }
-          
-          if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
+        }
+        
+        if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime + gracePeriod) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
             gd.p2_q = getRandomQuestionIdx(qArray); // 均勻抽題
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
             publishState();
-          }
-
-          if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
-            gd.nextQTime = now + 3000;
-            gd.phaseWinner = null;
-            publishState();
-          }
         }
+
+        // 修正 2：雙方皆作答的防卡死處理
+        if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
+            if (myRole === 'A') {
+                gd.nextQTime = now + 3000;
+                gd.phaseWinner = null;
+                publishState();
+            } else if (myRole === 'B') {
+                // 若 A 當機，B 等待 2.5 秒後自行推進
+                if (!window.bWaitTimer) window.bWaitTimer = now;
+                if (now - window.bWaitTimer > 2500) {
+                    gd.nextQTime = now + 3000;
+                    gd.phaseWinner = null;
+                    publishState();
+                    window.bWaitTimer = 0;
+                }
+            }
+        } else {
+            if (myRole === 'B') window.bWaitTimer = 0;
+        }
+
       }, 500);
     }
 
