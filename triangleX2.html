@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TRIANGLE X 全等召喚 - 強化版</title>
+  <title>TRIANGLE X 全等召喚 - 對戰版</title>
   <!-- 字體 -->
   <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -118,7 +118,7 @@
         <div class="text-center w-1/3 relative">
           <div id="soloSystemMsg" class="absolute -top-6 md:-top-8 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-20 pointer-events-none"></div>
           <div class="text-xs text-indigo-300">剩餘時間</div>
-          <div class="text-xl md:text-2xl font-bold text-red-400" id="soloTimer">05:00</div>
+          <div class="text-xl md:text-2xl font-bold text-red-400 font-mono" id="soloTimer">05:00</div>
         </div>
         <div class="text-right w-1/3"><div class="text-xs text-indigo-300">連錯</div><div class="text-xl font-bold text-red-500" id="soloWrong">0</div></div>
       </div>
@@ -202,7 +202,7 @@
         <div class="text-center w-1/3 relative">
           <div id="multiSystemMsg" class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-20 pointer-events-none"></div>
           <div class="text-[10px] md:text-xs text-indigo-300">剩餘時間</div>
-          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)]" id="multiTimer">03:00</div>
+          <div class="text-xl md:text-3xl font-bold text-red-400 drop-shadow-[0_0_8px_rgba(255,45,85,0.8)] font-mono" id="multiTimer">03:00</div>
         </div>
         <div class="text-right w-1/3">
           <div class="text-[10px] md:text-xs text-indigo-300">目前得分</div>
@@ -254,13 +254,13 @@
       <div class="flex flex-wrap gap-2 md:gap-4 items-center justify-center">
         <button onclick="createMultiSoloRoom()" class="text-xs md:text-sm text-green-400 hover:text-green-300 font-bold bg-green-500/20 px-3 py-1.5 rounded shadow border border-green-500/30 transition-transform hover:scale-105">🏆 建立多人單機競賽房</button>
         <button onclick="clearInactiveRooms()" class="text-xs text-yellow-400 hover:text-yellow-300 underline py-1.5">清除本地列表</button>
-        <button onclick="deleteAllRoomsFromServer()" class="text-xs text-red-500 hover:text-red-400 font-bold bg-red-500/20 px-3 py-1.5 rounded shadow border border-red-500/30">徹底刪除伺服器房間</button>
+        <button onclick="deleteAllRoomsFromServer()" class="text-xs text-red-500 hover:text-red-400 font-bold bg-red-500/20 px-3 py-1.5 rounded shadow border border-red-500/30">徹底刪除所有房間</button>
         <button onclick="returnToMenu()" class="btn-primary px-3 py-1.5 rounded font-bold text-xs md:text-sm ml-2">← 返回主畫面</button>
       </div>
     </div>
     
     <div class="w-full flex px-2">
-      <p class="text-xs text-gray-400">提示：點擊一般卡片可放大監控！(無人活動超過 5 分鐘的房間會被自動清除) / 點擊綠色競賽房可進入排行榜。</p>
+      <p class="text-xs text-gray-400">提示：點擊一般卡片可放大監控！(無人活動超過 5 分鐘的房間會自動清除) / 點擊右上角 <span class="text-red-400 font-bold">✕</span> 可強制刪除該房間。</p>
     </div>
 
     <div id="teacherGrid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full overflow-y-auto custom-scrollbar pr-2 pb-4 content-start flex-1">
@@ -270,11 +270,22 @@
   <!-- 8. 教師監控細節 (Modal - 一般對戰用) -->
   <div id="roomDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50 p-4 md:p-10">
     <div class="glass-panel w-full max-w-6xl h-full flex flex-col relative p-4 md:p-6 shadow-[0_0_40px_rgba(236,72,153,0.3)]">
-      <button onclick="closeRoomDetail()" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg z-20 shadow-lg transition-transform hover:scale-105">✕ 關閉監控</button>
       
-      <div class="flex items-center gap-4 border-b border-gray-700 pb-4 mb-4">
-        <h2 class="text-3xl md:text-4xl font-bold text-pink-400 tracking-widest" id="detailRoomTitle">房號: ---</h2>
-        <div id="detailRoomStatus" class="text-lg"></div>
+      <!-- 標頭資訊與按鈕區 (避免重疊) -->
+      <div class="w-full flex flex-col border-b border-gray-700 pb-4 mb-4 gap-4">
+        <!-- 上排按鈕區 -->
+        <div class="flex justify-end gap-2 z-20">
+          <button onclick="deleteSpecificRoom()" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-3 md:px-4 rounded-lg shadow-lg transition-transform hover:scale-105 text-sm md:text-base">🗑️ 刪除房間</button>
+          <button onclick="closeRoomDetail()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg shadow-lg transition-transform hover:scale-105 text-sm md:text-base">✕ 關閉</button>
+        </div>
+        <!-- 下排資訊區 -->
+        <div class="flex flex-col md:flex-row items-start md:items-end justify-between gap-2">
+          <div class="flex items-center gap-2 md:gap-4">
+            <h2 class="text-2xl md:text-4xl font-bold text-pink-400 tracking-widest" id="detailRoomTitle">房號: ---</h2>
+            <div id="detailRoomStatus" class="text-sm md:text-lg"></div>
+          </div>
+          <div id="detailTimer" class="text-xl md:text-2xl font-bold text-red-400 font-mono tracking-wider"></div>
+        </div>
       </div>
       
       <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 min-h-0 w-full relative">
@@ -314,13 +325,21 @@
   <!-- 8-1. 教師監控細節 (Modal - 多人單機競賽排行榜用) -->
   <div id="multiSoloTeacherPanel" class="hidden fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[80] p-4 md:p-10">
     <div class="glass-panel w-full max-w-5xl h-full flex flex-col relative p-4 md:p-6 shadow-[0_0_40px_rgba(76,175,80,0.3)]">
-      <button onclick="closeMultiSoloPanel()" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-2 rounded-lg z-20 shadow-lg transition-transform hover:scale-105">✕ 關閉</button>
       
-      <div class="flex items-center justify-between border-b border-gray-700 pb-4 mb-4 mt-8 md:mt-0 pr-0 md:pr-24">
-        <h2 class="text-2xl md:text-4xl font-bold text-green-400 tracking-widest flex items-center gap-2 md:gap-4">
-          🏆 競賽房號: <span id="msTeacherRoomId" class="bg-gray-800 px-3 md:px-4 py-1 rounded-lg border border-green-500/50">---</span>
-        </h2>
-        <button id="msStartGameBtn" onclick="startMultiSoloGame()" class="bg-green-600 hover:bg-green-500 text-white px-6 md:px-8 py-2 md:py-3 rounded-xl font-bold text-lg md:text-xl shadow-[0_0_15px_rgba(74,222,128,0.5)] transition-transform hover:scale-105 animate-pulse whitespace-nowrap hidden">🚀 開始遊戲</button>
+      <!-- 標頭資訊與按鈕區 -->
+      <div class="w-full flex flex-col border-b border-gray-700 pb-4 mb-4 gap-4">
+        <!-- 上排按鈕區 -->
+        <div class="flex justify-end gap-2 z-20">
+          <button id="msStartGameBtn" onclick="startMultiSoloGame()" class="bg-green-600 hover:bg-green-500 text-white px-4 md:px-6 py-2 rounded-lg font-bold text-sm md:text-base shadow-[0_0_15px_rgba(74,222,128,0.5)] transition-transform hover:scale-105 animate-pulse whitespace-nowrap hidden">🚀 開始遊戲</button>
+          <button onclick="closeMultiSoloPanel()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg shadow-lg transition-transform hover:scale-105 text-sm md:text-base">✕ 關閉</button>
+        </div>
+        <!-- 下排資訊區 -->
+        <div class="flex flex-col md:flex-row items-start md:items-end justify-between gap-2">
+          <h2 class="text-xl md:text-3xl font-bold text-green-400 tracking-widest flex flex-wrap items-center gap-2 md:gap-4">
+            🏆 競賽房: <span id="msTeacherRoomId" class="bg-gray-800 px-2 md:px-4 py-1 rounded-lg border border-green-500/50">---</span>
+          </h2>
+          <div id="msTeacherTimer" class="text-xl md:text-2xl font-bold text-red-400 font-mono tracking-wider"></div>
+        </div>
       </div>
       
       <div class="flex-1 w-full overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-xl border border-gray-700 p-2">
@@ -345,10 +364,14 @@
   <!-- 8-2. 教師監控細節 (Modal - 多人單機個別學生用) -->
   <div id="studentDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-[90] p-4 md:p-10">
     <div class="glass-panel w-full max-w-3xl h-full flex flex-col relative p-4 md:p-6 shadow-[0_0_40px_rgba(76,175,80,0.3)]">
-      <button onclick="closeStudentDetail()" class="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg z-20 shadow-lg transition-transform hover:scale-105">✕ 返回排行</button>
       
-      <div class="flex items-center gap-4 border-b border-gray-700 pb-4 mb-4">
-        <h2 class="text-3xl md:text-4xl font-bold text-green-400 tracking-widest" id="sdStudentName">學生: ---</h2>
+      <div class="w-full flex flex-col border-b border-gray-700 pb-4 mb-4 gap-4">
+        <div class="flex justify-end gap-2 z-20">
+          <button onclick="closeStudentDetail()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg shadow-lg transition-transform hover:scale-105 text-sm md:text-base">✕ 返回排行</button>
+        </div>
+        <div class="flex items-center gap-2 md:gap-4">
+          <h2 class="text-3xl md:text-4xl font-bold text-green-400 tracking-widest" id="sdStudentName">學生: ---</h2>
+        </div>
       </div>
       
       <div class="flex-1 flex flex-col items-center relative bg-gray-900/60 border border-green-500/30 rounded-xl p-4">
@@ -399,6 +422,7 @@
     let currentMode = 'menu'; 
     let globalTimerInterval = null;
     let phaseIntroInterval = null; 
+    let teacherTimerInterval = null; // 教師監控用的計時器
     let selectedEdges = {};
     let selectedAngles = {};
     let systemMsgTimeout = null;
@@ -699,6 +723,7 @@
     function cleanupGame() {
       if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       if (phaseIntroInterval) { clearInterval(phaseIntroInterval); phaseIntroInterval = null; }
+      if (teacherTimerInterval) { clearInterval(teacherTimerInterval); teacherTimerInterval = null; }
       if (systemMsgTimeout) { clearTimeout(systemMsgTimeout); systemMsgTimeout = null; }
       
       if (typeof mqttClient !== 'undefined' && mqttClient && isConnected) {
@@ -768,7 +793,8 @@
           scoreA: soloState.score, scoreB: 0, 
           wrongA: soloState.wrong, wrongB: 0,
           p1_idxA: soloState.easy_idx, p1_qA: soloState.currentQ,
-          p1_idxB: 0, p1_qB: 0, p2_idx: 0, p2_q: 0
+          p1_idxB: 0, p1_qB: 0, p2_idx: 0, p2_q: 0,
+          endTime: soloState.endTime // 加入時間給老師監控
         },
         selections: {
           A: {
@@ -813,15 +839,14 @@
       currentMode = isMulti ? 'multi_solo_playing' : 'solo';
       isMultiSolo = isMulti;
       
-      // 設定為 5 分鐘
-      soloState = { score: 0, wrong: 0, easy_idx: 0, currentQ: getRandomQuestionIdx(easyquestions), secondsRem: 5 * 60 };
+      // 設定為 5 分鐘，並記錄準確的結束時間
+      soloState = { score: 0, wrong: 0, easy_idx: 0, currentQ: getRandomQuestionIdx(easyquestions), endTime: Date.now() + 5 * 60 * 1000 };
       
       showScreen('soloScreen');
       
       // 多人競賽隱藏「再玩一次」按鈕，改在 endSoloGame 內控制顯示
       document.getElementById('restartBtn').classList.toggle('hidden', isMulti);
       
-      // 【新增】多人競賽時隱藏「返回主畫面」按鈕
       const soloReturnBtn = document.getElementById('soloReturnBtn');
       if (soloReturnBtn) {
           soloReturnBtn.classList.toggle('hidden', isMulti);
@@ -901,13 +926,21 @@
       if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       const timerElement = document.getElementById('soloTimer');
       timerElement.classList.remove('animate-pulse');
-      globalTimerInterval = setInterval(() => {
-        soloState.secondsRem--;
-        const s = soloState.secondsRem;
+      
+      const updateTimer = () => {
+        if (!soloState) return;
+        const rem = Math.max(0, soloState.endTime - Date.now());
+        const s = Math.floor(rem / 1000);
         timerElement.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-        if (s <= 30) timerElement.classList.add('animate-pulse');
+        
+        if (s <= 30 && s > 0) timerElement.classList.add('animate-pulse');
+        else timerElement.classList.remove('animate-pulse');
+        
         if (s <= 0) { clearInterval(globalTimerInterval); endSoloGame('時間到！'); }
-      }, 1000);
+      };
+      
+      updateTimer(); // immediate run
+      globalTimerInterval = setInterval(updateTimer, 500);
     }
 
     function endSoloGame(reason) {
@@ -937,6 +970,9 @@
         if (data === '') {
              if (currentMode === 'multi_solo_waiting' || currentMode === 'multi_solo_playing') {
                  alert('老師已關閉此競賽房間！');
+                 returnToMenu();
+             } else if (currentMode === 'multi' || currentMode === 'waiting') {
+                 alert('此房間已被刪除或關閉！');
                  returnToMenu();
              }
              return;
@@ -995,6 +1031,8 @@
               lastSeenHostTimestamp = data.hostTimestamp;
           }
 
+          let needsRepublish = false; // 修正 1：合併未發布問題
+
           if (localGameState && currentMode === 'multi' && data.status === localGameState.status) {
               if (data.status === 'phase1') {
                   // 防回溯與狀態整合
@@ -1012,7 +1050,7 @@
                   if (data.gameData.p2_idx < localGameState.gameData.p2_idx) {
                       return; 
                   }
-                  // 雙方同時搶答時的答案整合
+                  // 雙方同時搶答時的答案整合 (修正 1)
                   if (localGameState.gameData[`ans${myRole}`] !== null && data.gameData[`ans${myRole}`] === null && data.gameData.p2_idx === localGameState.gameData.p2_idx) {
                       data.gameData[`ans${myRole}`] = localGameState.gameData[`ans${myRole}`];
                       data.gameData[`score${myRole}`] = localGameState.gameData[`score${myRole}`];
@@ -1021,11 +1059,18 @@
                           data.gameData.nextQTime = localGameState.gameData.nextQTime;
                           data.gameData.phaseWinner = localGameState.gameData.phaseWinner;
                       }
+                      needsRepublish = true; // 標記被覆蓋，需要重新廣播
                   }
               }
           }
 
           handleRoomStateChange(data);
+          
+          // 修正 1：將被對方覆蓋的答案合併後，重新推播給伺服器，解決卡死
+          if (needsRepublish) {
+              publishState();
+          }
+
         } catch (e) { console.error(e); }
     }
 
@@ -1108,6 +1153,41 @@
       }
     };
 
+    function updateTeacherTimers() {
+        // Handle roomDetailModal timer
+        if (currentMonitorRoomId && !document.getElementById('roomDetailModal').classList.contains('hidden')) {
+             const state = teacherActiveRooms[currentMonitorRoomId]?.data;
+             const timerEl = document.getElementById('detailTimer');
+             if (state && timerEl) {
+                 let rem = 0; let showTimer = false;
+                 if (['phase1', 'phase2', 'phase1_intro', 'phase2_intro'].includes(state.status)) {
+                     if (state.gameData && state.gameData.phaseEndTime) { rem = Math.max(0, state.gameData.phaseEndTime - Date.now()); showTimer = true; }
+                 } else if (state.status === 'solo') {
+                     if (state.gameData && state.gameData.endTime) { rem = Math.max(0, state.gameData.endTime - Date.now()); showTimer = true; }
+                 }
+                 if (showTimer) {
+                     const s = Math.floor(rem / 1000);
+                     timerEl.textContent = `剩餘時間: ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+                 } else {
+                     timerEl.textContent = '';
+                 }
+             }
+        }
+        
+        // Handle multiSoloTeacherPanel timer
+        if (myMultiSoloRoomId && !document.getElementById('multiSoloTeacherPanel').classList.contains('hidden')) {
+             const state = teacherActiveRooms[myMultiSoloRoomId]?.data;
+             const timerEl = document.getElementById('msTeacherTimer');
+             if (state && state.status === 'playing' && state.endTime && timerEl) {
+                 const rem = Math.max(0, state.endTime - Date.now());
+                 const s = Math.floor(rem / 1000);
+                 timerEl.textContent = `剩餘時間: ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+             } else if (timerEl) {
+                 timerEl.textContent = '';
+             }
+        }
+    }
+
     window.enterTeacherMode = function() {
       if (!isConnected) return alert('系統連線中，請稍後');
       currentMode = 'teacher';
@@ -1134,6 +1214,10 @@
           renderTeacherDashboard();
         }
       }, 5000);
+
+      // 啟動教師監控畫面的專屬計時器
+      if (teacherTimerInterval) clearInterval(teacherTimerInterval);
+      teacherTimerInterval = setInterval(updateTeacherTimers, 500);
     };
 
     window.clearInactiveRooms = function() {
@@ -1150,6 +1234,24 @@
         teacherActiveRooms = {}; closeRoomDetail(); renderTeacherDashboard();
         alert('伺服器上的所有房間紀錄已徹底清除！');
       }
+    };
+
+    window.deleteRoomCard = function(roomId) {
+        if (confirm(`確定要強制刪除房間 ${roomId.replace('solo_', '')} 嗎？此動作將中斷遊戲。`)) {
+            publishRoomData(roomId, '');
+            delete teacherActiveRooms[roomId];
+            renderTeacherDashboard();
+        }
+    };
+
+    window.deleteSpecificRoom = function() {
+        if (!currentMonitorRoomId) return;
+        if (confirm("確定要強制刪除此房間並中斷遊戲嗎？")) {
+            const roomId = currentMonitorRoomId;
+            publishRoomData(roomId, '');
+            delete teacherActiveRooms[roomId];
+            closeRoomDetail();
+        }
     };
 
     // 多人單機競賽：老師建立房間
@@ -1188,6 +1290,7 @@
         
         document.getElementById('multiSoloTeacherPanel').classList.remove('hidden');
         renderMultiSoloLeaderboard();
+        updateTeacherTimers();
     };
 
     window.closeMultiSoloPanel = function() {
@@ -1214,7 +1317,8 @@
         const state = {
             type: 'multi_solo',
             status: 'playing',
-            host: clientId
+            host: clientId,
+            endTime: Date.now() + 5 * 60 * 1000 // 紀錄多人單機的結束時間供監控顯示
         };
         publishRoomData(myMultiSoloRoomId, state);
         document.getElementById('msStartGameBtn').classList.add('hidden');
@@ -1314,6 +1418,7 @@
         currentMonitorRoomId = roomId;
         document.getElementById('roomDetailModal').classList.remove('hidden');
         renderTeacherDashboard(); 
+        updateTeacherTimers(); // 立即觸發更新
     };
 
     window.closeRoomDetail = function() {
@@ -1324,7 +1429,7 @@
 
     function renderTeacherDashboard() {
       if (currentMode !== 'teacher') return;
-      if (currentMonitorRoomId) renderRoomDetail();
+      if (currentMonitorRoomId && teacherActiveRooms[currentMonitorRoomId]) renderRoomDetail();
 
       const grid = document.getElementById('teacherGrid');
       const countEl = document.getElementById('activeRoomCount');
@@ -1347,10 +1452,13 @@
             const cardClass = isPlaying ? "border-green-500/80 shadow-[0_0_20px_rgba(74,222,128,0.4)]" : "border-yellow-500/50";
             
             const cardHTML = `
-              <div onclick="openMultiSoloPanel('${roomId}')" class="bg-gray-900 border ${cardClass} rounded-xl p-4 flex flex-col justify-center items-center transition-all transform duration-200 cursor-pointer h-full min-h-[140px] hover:scale-105 hover:bg-gray-800">
-                <div class="text-xs text-green-400 mb-2 font-bold tracking-widest flex items-center gap-1">🏆 多人單機競賽</div>
-                <div class="text-4xl font-bold text-white tracking-widest mb-4">${roomId}</div>
-                <span class="bg-${isPlaying ? 'green' : 'yellow'}-500/20 text-${isPlaying ? 'green' : 'yellow'}-300 px-4 py-2 rounded-lg text-sm font-bold shadow-inner ${isPlaying ? 'animate-pulse' : ''}">${isPlaying ? '🟢 遊戲進行中，點擊看排行' : '⏳ 等待玩家加入...點擊管理'}</span>
+              <div class="bg-gray-900 border ${cardClass} rounded-xl p-4 flex flex-col justify-center items-center transition-all transform duration-200 min-h-[140px] hover:scale-105 hover:bg-gray-800 relative group">
+                <button onclick="event.stopPropagation(); deleteRoomCard('${roomId}')" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer text-xs" title="刪除此競賽">✕</button>
+                <div onclick="openMultiSoloPanel('${roomId}')" class="cursor-pointer w-full h-full flex flex-col justify-center items-center">
+                    <div class="text-xs text-green-400 mb-2 font-bold tracking-widest flex items-center gap-1">🏆 多人單機競賽</div>
+                    <div class="text-4xl font-bold text-white tracking-widest mb-4">${roomId}</div>
+                    <span class="bg-${isPlaying ? 'green' : 'yellow'}-500/20 text-${isPlaying ? 'green' : 'yellow'}-300 px-4 py-2 rounded-lg text-sm font-bold shadow-inner ${isPlaying ? 'animate-pulse' : ''}">${isPlaying ? '🟢 遊戲進行中，點擊看排行' : '⏳ 等待玩家加入...點擊管理'}</span>
+                </div>
               </div>
             `;
             grid.insertAdjacentHTML('beforeend', cardHTML);
@@ -1386,48 +1494,51 @@
         const borderClass = isMonitoring ? 'border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'border-gray-600/50 hover:border-indigo-500/50 cursor-pointer';
 
         const cardHTML = `
-          <div onclick="openRoomDetail('${roomId}')" class="bg-gray-800/80 border ${borderClass} rounded-xl p-3 flex flex-col justify-between transition-all transform duration-200 min-h-[140px]">
-            <div class="flex justify-between items-start mb-2 border-b border-gray-700 pb-2">
-              <div>
-                <div class="text-[10px] text-gray-400">房號 / 識別碼</div>
-                <div class="text-[15px] font-bold text-white tracking-widest truncate w-32 md:w-auto">${roomId.replace('solo_', '')}</div>
-              </div>
-              <div>${statusBadge}</div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-2 mb-1 flex-1">
-              <div class="flex flex-col bg-gray-900/50 p-2 rounded items-center">
-                <div class="text-xs font-bold text-gray-300 mb-1 truncate w-full text-center">${names.A} ${state.players.A ? '🟢' : '🔴'}</div>
-                <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextA}</div>
-                <div class="flex h-20 w-full gap-1 justify-center relative">
-                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
-                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+          <div class="bg-gray-800/80 border ${borderClass} rounded-xl p-3 flex flex-col justify-between transition-all transform duration-200 min-h-[140px] relative group">
+            <button onclick="event.stopPropagation(); deleteRoomCard('${roomId}')" class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow cursor-pointer text-xs" title="刪除此房間">✕</button>
+            <div onclick="openRoomDetail('${roomId}')" class="cursor-pointer h-full flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-2 border-b border-gray-700 pb-2">
+                  <div>
+                    <div class="text-[10px] text-gray-400">房號 / 識別碼</div>
+                    <div class="text-[15px] font-bold text-white tracking-widest truncate w-32 md:w-auto">${roomId.replace('solo_', '')}</div>
+                  </div>
+                  <div>${statusBadge}</div>
                 </div>
-                <div class="mt-2 flex justify-between w-full px-1">
-                   <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreA : 0}</span>
-                   <span class="text-xs text-red-500 mt-0.5">錯:${gd ? gd.wrongA : 0}</span>
-                </div>
-              </div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-1 flex-1">
+                  <div class="flex flex-col bg-gray-900/50 p-2 rounded items-center">
+                    <div class="text-xs font-bold text-gray-300 mb-1 truncate w-full text-center">${names.A} ${state.players.A ? '🟢' : '🔴'}</div>
+                    <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextA}</div>
+                    <div class="flex h-20 w-full gap-1 justify-center relative">
+                      <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                      <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_A2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                    </div>
+                    <div class="mt-2 flex justify-between w-full px-1">
+                       <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreA : 0}</span>
+                       <span class="text-xs text-red-500 mt-0.5">錯:${gd ? gd.wrongA : 0}</span>
+                    </div>
+                  </div>
 
-              <div class="flex flex-col bg-gray-900/50 p-2 rounded items-center relative">
-                ${state.status.startsWith('solo') ? '<div class="absolute inset-0 bg-black/50 z-10 rounded flex items-center justify-center text-gray-400 text-xs font-bold tracking-widest">單機模式</div>' : ''}
-                <div class="text-xs font-bold text-gray-300 mb-1 truncate w-full text-center">${names.B} ${state.players.B ? '🟢' : '🔴'}</div>
-                <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextB}</div>
-                <div class="flex h-20 w-full gap-1 justify-center relative">
-                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
-                  <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                  <div class="flex flex-col bg-gray-900/50 p-2 rounded items-center relative">
+                    ${state.status.startsWith('solo') ? '<div class="absolute inset-0 bg-black/50 z-10 rounded flex items-center justify-center text-gray-400 text-xs font-bold tracking-widest">單機模式</div>' : ''}
+                    <div class="text-xs font-bold text-gray-300 mb-1 truncate w-full text-center">${names.B} ${state.players.B ? '🟢' : '🔴'}</div>
+                    <div class="text-[10px] text-yellow-400 mb-1 h-3 truncate w-full text-center">${qTextB}</div>
+                    <div class="flex h-20 w-full gap-1 justify-center relative">
+                      <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B1" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                      <div class="w-1/2 aspect-square"><canvas id="t_${roomId}_B2" class="w-full h-full block object-contain border border-gray-700 rounded bg-gray-800"></canvas></div>
+                    </div>
+                    <div class="mt-2 flex justify-between w-full px-1">
+                       <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreB : 0}</span>
+                       <span class="text-xs text-red-500 mt-0.5">錯:${gd ? gd.wrongB : 0}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="mt-2 flex justify-between w-full px-1">
-                   <span class="text-sm font-bold text-indigo-400">分:${gd ? gd.scoreB : 0}</span>
-                   <span class="text-xs text-red-500 mt-0.5">錯:${gd ? gd.wrongB : 0}</span>
-                </div>
-              </div>
+                
+                ${(state.status === 'finished' || state.status === 'solo_finished') ? 
+                  `<div class="text-center text-xs mt-1 text-yellow-400">結果: ${state.reason || '無'}</div>` : 
+                  `<div class="text-center text-[10px] mt-1 text-gray-500">同步時間: ${new Date(teacherActiveRooms[roomId].lastUpdate).toLocaleTimeString()}</div>`
+                }
             </div>
-            
-            ${(state.status === 'finished' || state.status === 'solo_finished') ? 
-              `<div class="text-center text-xs mt-1 text-yellow-400">結果: ${state.reason || '無'}</div>` : 
-              `<div class="text-center text-[10px] mt-1 text-gray-500">同步時間: ${new Date(teacherActiveRooms[roomId].lastUpdate).toLocaleTimeString()}</div>`
-            }
           </div>
         `;
         grid.insertAdjacentHTML('beforeend', cardHTML);
@@ -1786,43 +1897,60 @@
           else timerElement.classList.remove('animate-pulse');
         }
 
-        if (myRole === 'A') {
-          if (st === 'phase1_intro' && now > gd.phaseEndTime) {
+        // 修正 2：容錯接管機制 (Timeout Fallback)
+        // 玩家 A 立刻執行推進，玩家 B 給予 2.5 秒寬限期 (若 A 卡死，B 自動接管)
+        const gracePeriod = myRole === 'A' ? 0 : 2500; 
+
+        if (st === 'phase1_intro' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 180000; // 第一階段 3 分鐘
+            gd.phaseEndTime = now + 180000 - gracePeriod; // 第一階段 3 分鐘
             publishState();
-          } else if (st === 'phase1' && now > gd.phaseEndTime) {
+        } else if (st === 'phase1' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase2_intro';
-            gd.phaseEndTime = now + 3000; 
+            gd.phaseEndTime = now + 3000 - gracePeriod; 
             publishState();
-          } else if (st === 'phase2_intro' && now > gd.phaseEndTime) {
+        } else if (st === 'phase2_intro' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase2';
-            gd.phaseEndTime = now + 120000; // 第二階段 2 分鐘
+            gd.phaseEndTime = now + 120000 - gracePeriod; // 第二階段 2 分鐘
             publishState();
-          } else if (st === 'phase2' && now > gd.phaseEndTime) {
+        } else if (st === 'phase2' && now > gd.phaseEndTime + gracePeriod) {
             const scA = gd.scoreA, scB = gd.scoreB;
             const winner = scA > scB ? 'A' : (scB > scA ? 'B' : null);
             localGameState.status = 'finished';
             localGameState.winner = winner;
             localGameState.reason = winner ? '時間到！' : '時間到！雙方平手';
             publishState();
-          }
-          
-          if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime) {
+        }
+        
+        if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime + gracePeriod) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
             gd.p2_q = getRandomQuestionIdx(qArray); // 均勻抽題
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
             publishState();
-          }
-
-          if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
-            gd.nextQTime = now + 3000;
-            gd.phaseWinner = null;
-            publishState();
-          }
         }
+
+        // 修正 2：雙方皆作答的防卡死處理
+        if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
+            if (myRole === 'A') {
+                gd.nextQTime = now + 3000;
+                gd.phaseWinner = null;
+                publishState();
+            } else if (myRole === 'B') {
+                // 若 A 當機，B 等待 2.5 秒後自行推進
+                if (!window.bWaitTimer) window.bWaitTimer = now;
+                if (now - window.bWaitTimer > 2500) {
+                    gd.nextQTime = now + 3000;
+                    gd.phaseWinner = null;
+                    publishState();
+                    window.bWaitTimer = 0;
+                }
+            }
+        } else {
+            if (myRole === 'B') window.bWaitTimer = 0;
+        }
+
       }, 500);
     }
 
