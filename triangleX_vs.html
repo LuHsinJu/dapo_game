@@ -215,6 +215,12 @@
       </div>
     </div>
 
+    <!-- 獨立的 10 秒倒數橫幅 (階段二搶答使用) -->
+    <div id="forceAnswerBanner" class="hidden w-full max-w-[360px] md:max-w-[480px] rounded-xl p-2 text-center transition-all z-30">
+        <div class="text-xl md:text-2xl font-bold text-white tracking-widest">⏳ 倒數 <span id="forceAnswerSecs">10</span> 秒</div>
+        <div id="forceAnswerText" class="text-xs md:text-base text-yellow-300 font-bold mt-1"></div>
+    </div>
+
     <!-- Center Canvas Area -->
     <div class="w-full max-w-[360px] md:max-w-[480px] flex flex-col items-center flex-none">
       <div class="w-full flex justify-between text-[10px] md:text-xs mb-2 px-2 text-gray-300 border-b border-indigo-500/30 pb-1">
@@ -1751,14 +1757,22 @@
         drawAllTriangles(multiQ, ['myCanvas1', 'myCanvas2']);
       }
 
-      document.getElementById('myStatusText').innerText = gd[`ans${myRole}`] ? `✅ 已送出答案` : '思考中...';
+      if (gd[`ans${myRole}`] === 'TIMEOUT') {
+          document.getElementById('myStatusText').innerText = '❌ 逾時未作答';
+      } else {
+          document.getElementById('myStatusText').innerText = gd[`ans${myRole}`] ? `✅ 已送出答案` : '思考中...';
+      }
 
       if (gd.nextQTime > 0) {
         if (gd.phaseWinner) {
             const winnerName = gd.phaseWinner === myRole ? myName : opponentName;
             showSystemMsg(`玩家 ${winnerName} 答對了！準備換題...`, 'text-green-400');
         } else {
-            showSystemMsg(`雙方皆答錯！準備換題...`, 'text-red-400');
+            if (gd.ansA === 'TIMEOUT' || gd.ansB === 'TIMEOUT') {
+                showSystemMsg(`逾時未作答！準備換題...`, 'text-red-400');
+            } else {
+                showSystemMsg(`雙方皆答錯！準備換題...`, 'text-red-400');
+            }
         }
       }
     }
@@ -1889,6 +1903,9 @@
     function startMultiTimer() {
       if (globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
       const timerElement = document.getElementById('multiTimer');
+      const bannerEl = document.getElementById('forceAnswerBanner');
+      const bannerSecs = document.getElementById('forceAnswerSecs');
+      const bannerText = document.getElementById('forceAnswerText');
       
       globalTimerInterval = setInterval(() => {
         if (!localGameState) return;
@@ -1929,21 +1946,21 @@
             publishState();
         }
         
-        // ===== 新增：處理 10 秒強制倒數顯示與逾時判定 =====
+        // ===== 處理 10 秒強制倒數顯示與逾時判定 (採用獨立的大型 Banner) =====
         if (st === 'phase2' && gd.forceAnswerTime > 0 && gd.nextQTime === 0) {
             const forceRem = Math.max(0, gd.forceAnswerTime - now);
             const forceSecs = Math.ceil(forceRem / 1000);
-            const msgEl = document.getElementById('multiSystemMsg');
             
-            // 讓雙方都看見明顯的秒數倒數
-            if (msgEl) {
+            if (bannerEl && bannerSecs && bannerText) {
+                bannerSecs.innerText = forceSecs;
                 if (gd[`ans${myRole}`] === null) {
-                    msgEl.innerText = `⏳ 倒數 ${forceSecs} 秒！對手已答錯，請盡快作答！`;
-                    msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-red-400 animate-pulse';
+                    bannerText.innerText = `對手已答錯！請把握機會盡快作答！`;
+                    bannerEl.className = 'w-full max-w-[360px] md:max-w-[480px] bg-red-900/90 border-2 border-red-500 rounded-xl p-2 text-center shadow-[0_0_20px_rgba(239,68,68,0.8)] transition-all z-30 animate-pulse';
                 } else {
-                    msgEl.innerText = `⏳ 倒數 ${forceSecs} 秒！你已答錯，等待對手作答...`;
-                    msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-yellow-400';
+                    bannerText.innerText = `你已答錯！等待對手作答中...`;
+                    bannerEl.className = 'w-full max-w-[360px] md:max-w-[480px] bg-yellow-900/90 border-2 border-yellow-500 rounded-xl p-2 text-center shadow-[0_0_20px_rgba(234,179,8,0.8)] transition-all z-30 opacity-90';
                 }
+                bannerEl.classList.remove('hidden');
             }
 
             // 處理 10 秒時間到
@@ -1978,8 +1995,12 @@
             } else {
                 if (myRole === 'B') window.bWaitTimerForce = 0;
             }
+        } else {
+            // 時間歸零或已經開始換題時，隱藏獨立 Banner
+            if (bannerEl) bannerEl.classList.add('hidden');
+            if (myRole === 'B') window.bWaitTimerForce = 0;
         }
-        // ==================================================
+        // =================================================================
 
         if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime + gracePeriod) {
             gd.p2_idx++;
