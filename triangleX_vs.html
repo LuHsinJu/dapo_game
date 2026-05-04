@@ -1756,9 +1756,9 @@
       if (gd.nextQTime > 0) {
         if (gd.phaseWinner) {
             const winnerName = gd.phaseWinner === myRole ? myName : opponentName;
-            showSystemMsg(`玩家 ${winnerName} 率先答對！5 秒後進入下一題...`, 'text-green-400');
+            showSystemMsg(`玩家 ${winnerName} 答對了！準備換題...`, 'text-green-400');
         } else {
-            showSystemMsg(`雙方皆答錯！3 秒後進入下一題...`, 'text-red-400');
+            showSystemMsg(`雙方皆答錯！準備換題...`, 'text-red-400');
         }
       }
     }
@@ -1835,14 +1835,16 @@
         if (ans === qObj.correct) {
           gd[`score${myRole}`]++; gd[`wrong${myRole}`] = 0;
           if (gd.nextQTime === 0) {
-            gd.nextQTime = Date.now() + timeOffset + 5000;
+            // 加快節奏：如果對方正在倒數中被你答對，只停留 2 秒就換題
+            gd.nextQTime = Date.now() + timeOffset + (gd.forceAnswerTime > 0 ? 2000 : 3000);
             gd.phaseWinner = myRole;
             gd.forceAnswerTime = 0; // 有人答對，清除強制計時
           }
         } else {
           gd[`wrong${myRole}`]++;
           if (gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
-            gd.nextQTime = Date.now() + timeOffset + 3000;
+            // 雙方都作答完畢(皆錯) -> 停留 2 秒看結果後立刻換題
+            gd.nextQTime = Date.now() + timeOffset + 2000;
             gd.phaseWinner = null;
             gd.forceAnswerTime = 0; // 雙方都答錯，清除強制計時
           } else if (gd.nextQTime === 0) {
@@ -1902,7 +1904,7 @@
           else timerElement.classList.remove('animate-pulse');
         }
 
-        // 修正 2：容錯接管機制 (Timeout Fallback)
+        // 容錯接管機制 (Timeout Fallback)
         // 玩家 A 立刻執行推進，玩家 B 給予 2.5 秒寬限期 (若 A 卡死，B 自動接管)
         const gracePeriod = myRole === 'A' ? 0 : 2500; 
 
@@ -1933,13 +1935,13 @@
             const forceSecs = Math.ceil(forceRem / 1000);
             const msgEl = document.getElementById('multiSystemMsg');
             
-            // 更新畫面提示
+            // 讓雙方都看見明顯的秒數倒數
             if (msgEl) {
                 if (gd[`ans${myRole}`] === null) {
-                    msgEl.innerText = `對手答錯！請在 ${forceSecs} 秒內作答！`;
+                    msgEl.innerText = `⏳ 倒數 ${forceSecs} 秒！對手已答錯，請盡快作答！`;
                     msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-red-400 animate-pulse';
                 } else {
-                    msgEl.innerText = `等待對手在 ${forceSecs} 秒內作答...`;
+                    msgEl.innerText = `⏳ 倒數 ${forceSecs} 秒！你已答錯，等待對手作答...`;
                     msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-yellow-400';
                 }
             }
@@ -1952,20 +1954,18 @@
                     if (gd.ansB === null) { gd.ansB = 'TIMEOUT'; gd.wrongB++; timeoutOccurred = true; }
                     
                     if (timeoutOccurred) {
-                        // 檢查是否因逾時導致連續 5 次答錯出局
                         if (gd.wrongA >= 5) {
                             localGameState.status = 'finished'; localGameState.winner = 'B'; localGameState.reason = `玩家 A 連續答錯/逾時五次`;
                         } else if (gd.wrongB >= 5) {
                             localGameState.status = 'finished'; localGameState.winner = 'A'; localGameState.reason = `玩家 B 連續答錯/逾時五次`;
                         } else {
-                            gd.nextQTime = now + 3000; gd.phaseWinner = null;
+                            gd.nextQTime = now + 2000; gd.phaseWinner = null; // 逾時後也只需等 2 秒就換題
                         }
                         gd.forceAnswerTime = 0;
                         publishState();
                     }
                 };
 
-                // 主機 A 直接處理，客機 B 容錯接管
                 if (myRole === 'A') {
                     processTimeout();
                 } else if (myRole === 'B') {
@@ -1987,21 +1987,20 @@
             gd.p2_q = getRandomQuestionIdx(qArray); // 均勻抽題
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
-            gd.forceAnswerTime = 0; // 新增這行：進入下一題時重置
+            gd.forceAnswerTime = 0; // 進入下一題時重置
             publishState();
         }
 
-        // 修正 2：雙方皆作答的防卡死處理
+        // 雙方皆作答的防卡死處理
         if (st === 'phase2' && gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
             if (myRole === 'A') {
-                gd.nextQTime = now + 3000;
+                gd.nextQTime = now + 2000; // 縮短為 2 秒
                 gd.phaseWinner = null;
                 publishState();
             } else if (myRole === 'B') {
-                // 若 A 當機，B 等待 2.5 秒後自行推進
                 if (!window.bWaitTimer) window.bWaitTimer = now;
                 if (now - window.bWaitTimer > 2500) {
-                    gd.nextQTime = now + 3000;
+                    gd.nextQTime = now + 2000; // 縮短為 2 秒
                     gd.phaseWinner = null;
                     publishState();
                     window.bWaitTimer = 0;
