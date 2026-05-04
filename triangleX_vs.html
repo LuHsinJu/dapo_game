@@ -1095,7 +1095,7 @@
             p1_idxA: 0, p1_qA: getRandomQuestionIdx(easyquestions), 
             p1_idxB: 0, p1_qB: getRandomQuestionIdx(easyquestions),
             p2_idx: 0, p2_q: getRandomQuestionIdx(easyquestions),
-            ansA: null, ansB: null, phaseEndTime: 0, nextQTime: 0
+            ansA: null, ansB: null, phaseEndTime: 0, nextQTime: 0, forceAnswerTime: 0
           },
           selections: { 
             A: { e1: {}, e2: {}, a1: {}, a2: {} }, 
@@ -1836,13 +1836,18 @@
           gd[`score${myRole}`]++; gd[`wrong${myRole}`] = 0;
           if (gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + timeOffset + 5000;
-            gd.phaseWinner = myRole; 
+            gd.phaseWinner = myRole;
+            gd.forceAnswerTime = 0; // 有人答對，清除強制計時
           }
         } else {
           gd[`wrong${myRole}`]++;
           if (gd.ansA !== null && gd.ansB !== null && gd.nextQTime === 0) {
             gd.nextQTime = Date.now() + timeOffset + 3000;
-            gd.phaseWinner = null; 
+            gd.phaseWinner = null;
+            gd.forceAnswerTime = 0; // 雙方都答錯，清除強制計時
+          } else if (gd.nextQTime === 0) {
+            // 一方答錯，另一方尚未作答，啟動 10 秒強制計時
+            gd.forceAnswerTime = Date.now() + timeOffset + 10000;
           }
         }
       }
@@ -1851,7 +1856,7 @@
       if (st === 'phase2' && gd[`wrong${myRole}`] >= 5) {
         localGameState.status = 'finished';
         localGameState.winner = myRole === 'A' ? 'B' : 'A';
-        localGameState.reason = `玩家 ${myName} 連續答錯五次`;
+        localGameState.reason = `玩家 ${myName} 連續答錯/逾時五次`;
       }
       publishState();
     };
@@ -1903,7 +1908,7 @@
 
         if (st === 'phase1_intro' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase1';
-            gd.phaseEndTime = now + 60000 - gracePeriod; // 第一階段 3 分鐘
+            gd.phaseEndTime = now + 180000 - gracePeriod; // 第一階段 3 分鐘
             publishState();
         } else if (st === 'phase1' && now > gd.phaseEndTime + gracePeriod) {
             localGameState.status = 'phase2_intro';
@@ -1922,12 +1927,67 @@
             publishState();
         }
         
+        // ===== 新增：處理 10 秒強制倒數顯示與逾時判定 =====
+        if (st === 'phase2' && gd.forceAnswerTime > 0 && gd.nextQTime === 0) {
+            const forceRem = Math.max(0, gd.forceAnswerTime - now);
+            const forceSecs = Math.ceil(forceRem / 1000);
+            const msgEl = document.getElementById('multiSystemMsg');
+            
+            // 更新畫面提示
+            if (msgEl) {
+                if (gd[`ans${myRole}`] === null) {
+                    msgEl.innerText = `對手答錯！請在 ${forceSecs} 秒內作答！`;
+                    msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-red-400 animate-pulse';
+                } else {
+                    msgEl.innerText = `等待對手在 ${forceSecs} 秒內作答...`;
+                    msgEl.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs md:text-sm font-bold drop-shadow-md w-max whitespace-nowrap transition-all z-10 pointer-events-none text-yellow-400';
+                }
+            }
+
+            // 處理 10 秒時間到
+            if (now > gd.forceAnswerTime + gracePeriod) {
+                const processTimeout = () => {
+                    let timeoutOccurred = false;
+                    if (gd.ansA === null) { gd.ansA = 'TIMEOUT'; gd.wrongA++; timeoutOccurred = true; }
+                    if (gd.ansB === null) { gd.ansB = 'TIMEOUT'; gd.wrongB++; timeoutOccurred = true; }
+                    
+                    if (timeoutOccurred) {
+                        // 檢查是否因逾時導致連續 5 次答錯出局
+                        if (gd.wrongA >= 5) {
+                            localGameState.status = 'finished'; localGameState.winner = 'B'; localGameState.reason = `玩家 A 連續答錯/逾時五次`;
+                        } else if (gd.wrongB >= 5) {
+                            localGameState.status = 'finished'; localGameState.winner = 'A'; localGameState.reason = `玩家 B 連續答錯/逾時五次`;
+                        } else {
+                            gd.nextQTime = now + 3000; gd.phaseWinner = null;
+                        }
+                        gd.forceAnswerTime = 0;
+                        publishState();
+                    }
+                };
+
+                // 主機 A 直接處理，客機 B 容錯接管
+                if (myRole === 'A') {
+                    processTimeout();
+                } else if (myRole === 'B') {
+                    if (!window.bWaitTimerForce) window.bWaitTimerForce = now;
+                    if (now - window.bWaitTimerForce > 2500) {
+                        processTimeout();
+                        window.bWaitTimerForce = 0;
+                    }
+                }
+            } else {
+                if (myRole === 'B') window.bWaitTimerForce = 0;
+            }
+        }
+        // ==================================================
+
         if (st === 'phase2' && gd.nextQTime > 0 && now > gd.nextQTime + gracePeriod) {
             gd.p2_idx++;
             const qArray = gd.p2_idx < 5 ? easyquestions : questions;
             gd.p2_q = getRandomQuestionIdx(qArray); // 均勻抽題
             gd.ansA = null; gd.ansB = null;
             gd.nextQTime = 0; gd.phaseWinner = null;
+            gd.forceAnswerTime = 0; // 新增這行：進入下一題時重置
             publishState();
         }
 
