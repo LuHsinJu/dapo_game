@@ -111,8 +111,6 @@ body {
 }
 .nav-icon { font-size: 20px; width: 24px; text-align: center; }
 
-.admin-area { padding: 20px; border-top: 1px solid var(--border-color); }
-
 /* 右側主工作區 (Main Workspace) */
 #main-workspace {
     flex: 1;
@@ -233,12 +231,13 @@ body {
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; place-items: center; }
 .modal-overlay.show { display: grid; }
 .modal-box { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 40px; width: 90%; max-width: 400px; border-top: 4px solid var(--neon-magenta); text-align: center;}
+
 /* RWD: 手機版底部導航 */
 @media (max-width: 768px) {
     #terminal-app { flex-direction: column-reverse; }
     #sidebar { width: 100%; height: 70px; flex-direction: row; border-right: none; border-top: 1px solid var(--border-color); }
     #sidebar.collapsed { height: 0; border: none; opacity: 0; }
-    .brand-area, .admin-area { display: none; }
+    .brand-area { display: none; }
     .nav-menu { flex-direction: row; padding: 0; gap: 0; overflow-x: auto; overflow-y: hidden; }
     .nav-item { flex: 1; justify-content: center; flex-direction: column; gap: 5px; padding: 10px 5px; font-size: 11px; border-left: none; border-bottom: 3px solid transparent;}
     .nav-item.active { border-left: none; border-bottom-color: var(--neon-cyan); background: linear-gradient(0deg, rgba(0,240,255,0.1), transparent); }
@@ -279,15 +278,17 @@ body {
             <div class="nav-item" onclick="switchTab('arena')">
                 <span class="nav-icon">⚔️</span><span>排位賽</span>
             </div>
-            <!-- 手機版隱藏 ADMIN -->
+            
+            <!-- 管理員登入入口 (取代原本的底部按鈕，讓手機平板也能按) -->
+            <div class="nav-item" onclick="openAuth()" id="nav-login">
+                <span class="nav-icon">🔒</span><span>管理員登入</span>
+            </div>
+
+            <!-- 隱藏的賽事控制台 (登入後才會顯示) -->
             <div class="nav-item" style="display:none;" id="nav-admin" onclick="switchTab('admin')">
                 <span class="nav-icon">🛡️</span><span>賽事控制台</span>
             </div>
         </nav>
-        
-        <div class="admin-area">
-            <button class="btn-cyber pink" style="width:100%; font-size:12px; padding: 10px;" onclick="openAuth()"><span>系統管理員 (ADMIN)</span></button>
-        </div>
     </aside>
 
     <!-- 主工作區 (Main Content) -->
@@ -619,8 +620,12 @@ body {
   window.openAuth = () => { $('auth-overlay').classList.add('show'); $('inp-admin-pwd').value=''; $('inp-admin-pwd').focus(); };
   window.closeAuth = () => { $('auth-overlay').classList.remove('show'); };
   window.verifyAdmin = () => {
-      if($('inp-admin-pwd').value === '1234'){ closeAuth(); switchTab('admin'); }
-      else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
+      if($('inp-admin-pwd').value === '1234'){ 
+          closeAuth(); 
+          $('nav-login').style.display = 'none'; // 登入成功後隱藏鎖頭登入鈕
+          switchTab('admin'); 
+      }
+      else { sysNotify("ACCESS DENIED // 密碼錯誤"); $('inp-admin-pwd').value=''; }
   };
 
   // --- 題庫引擎 ---
