@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#090a0f">
+<title>導火線：切點引爆</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+<style>
+/* =========================================
+   戰術終端機佈局 (Tactical Terminal OS)
+   ========================================= */
+:root {
+    --bg-base: #090a0f;      /* 極深藍黑 */
+    --bg-panel: #11141d;     /* 面板底色 */
+    --bg-surface: rgba(22, 28, 45, 0.7); /* 半透明表面 */
+    
+    --neon-cyan: #00f0ff;    /* 主題青 */
+    --neon-magenta: #ff0055; /* 警告紅 */
+    --neon-yellow: #ffe600;  /* 提示黃 */
+    --neon-green: #00ff66;   /* 成功綠 */
+    
+    --text-main: #e2e8f0;
+    --text-muted: #64748b;
+    --border-color: rgba(0, 240, 255, 0.15);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0; padding: 0;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: 'Noto Sans TC', sans-serif;
+    /* 全螢幕鎖定 */
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    display: flex;
+    background-image: 
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* 遊戲字體共用 */
+.font-cyber { font-family: 'Orbitron', 'Noto Sans TC', sans-serif; }
+
+/* 電競發光動畫特效 */
+@keyframes rgbGlow {
+    0% { color: var(--neon-cyan); text-shadow: 0 0 15px rgba(0,240,255,0.6); }
+    33% { color: var(--neon-magenta); text-shadow: 0 0 15px rgba(255,0,85,0.6); }
+    66% { color: var(--neon-yellow); text-shadow: 0 0 15px rgba(255,230,0,0.6); }
+    100% { color: var(--neon-cyan); text-shadow: 0 0 15px rgba(0,240,255,0.6); }
+}
+.rgb-glow { animation: rgbGlow 3s infinite linear; }
+
+/* =========================================
+   佈局架構 (Layout)
+   ========================================= */
+#terminal-app {
+    display: flex;
+    width: 100%; height: 100%;
+}
+
+/* 左側導覽列 (Sidebar) */
+#sidebar {
+    width: 260px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    display: flex; flex-direction: column;
+    z-index: 50;
+    box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+    transition: width 0.3s ease, height 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+    white-space: nowrap;
+}
+@media (min-width: 769px) {
+    #sidebar.collapsed {
+        width: 0px;
+        min-width: 0px;
+        border-right: none;
+        opacity: 0;
+    }
+}
+
+.brand-area { padding: 25px 20px; border-bottom: 1px solid var(--border-color); text-align: center; }
+.brand-text h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #fff; font-style: italic;}
+
+.nav-menu {
+    flex: 1; padding: 20px 0; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 5px;
+}
+.nav-item {
+    padding: 15px 25px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px; font-weight: 700; letter-spacing: 2px;
+    display: flex; align-items: center; gap: 15px;
+    transition: 0.2s;
+    border-left: 3px solid transparent;
+}
+.nav-item:hover { color: #fff; background: rgba(0,240,255,0.05); }
+.nav-item.active {
+    color: var(--neon-cyan);
+    background: linear-gradient(90deg, rgba(0,240,255,0.1), transparent);
+    border-left-color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,0.5);
+}
+.nav-icon { font-size: 20px; width: 24px; text-align: center; }
+
+.admin-area { padding: 20px; border-top: 1px solid var(--border-color); }
+
+/* 右側主工作區 (Main Workspace) */
+#main-workspace {
+    flex: 1;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+}
+
+/* 頂部資訊列 (Top Bar) */
+#top-bar {
+    height: 60px;
+    background: rgba(17, 20, 29, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 30px; z-index: 40;
+}
+.sys-status { font-size: 12px; color: var(--neon-green); letter-spacing: 2px; display: flex; align-items: center; gap: 10px;}
+.sys-status::before { content:''; display:block; width:8px; height:8px; background:var(--neon-green); border-radius:50%; box-shadow:0 0 10px var(--neon-green); animation: pulse 2s infinite;}
+
+/* 內容顯示區 (View Container) */
+#view-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px;
+    position: relative;
+}
+#view-container::-webkit-scrollbar { width: 8px; }
+#view-container::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.3); }
+
+.view-panel { display: none; animation: fadeUp 0.3s ease forwards; }
+.view-panel.active { display: block; }
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   共用 UI 元件
+   ========================================= */
+.section-header { margin-bottom: 30px; }
+.section-header h2 { font-size: 32px; font-weight: 900; margin: 0 0 5px; color: #fff; font-style: italic; letter-spacing: 2px;}
+.section-header p { color: var(--neon-cyan); font-size: 13px; letter-spacing: 3px; margin: 0; }
+
+.btn-cyber {
+    background: rgba(0,240,255,0.1); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
+    padding: 12px 25px; font-weight: 900; letter-spacing: 2px; cursor: pointer;
+    clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+    transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-cyber:hover:not(:disabled) { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.4); transform: scale(1.02); }
+.btn-cyber:active:not(:disabled) { transform: scale(0.98); }
+.btn-cyber:disabled { opacity: 0.4; cursor: not-allowed; border-color: #555; color: #777; background: transparent; }
+
+.btn-cyber.pink { border-color: var(--neon-magenta); color: var(--neon-magenta); background: rgba(255,0,85,0.1); }
+.btn-cyber.pink:hover:not(:disabled) { background: var(--neon-magenta); color: #fff; box-shadow: 0 0 15px rgba(255,0,85,0.4); }
+
+.btn-cyber.yellow { border-color: var(--neon-yellow); color: var(--neon-yellow); background: rgba(255,230,0,0.1); }
+.btn-cyber.yellow:hover:not(:disabled) { background: var(--neon-yellow); color: #000; box-shadow: 0 0 15px rgba(255,230,0,0.4); }
+
+.cyber-input {
+    background: rgba(0,0,0,0.5); border: 1px solid #333; color: var(--neon-cyan);
+    padding: 15px 20px; font-size: 16px; outline: none; width: 100%; transition: 0.2s;
+    border-left: 4px solid #333;
+}
+.cyber-input:focus { border-color: var(--neon-cyan); border-left-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,240,255,0.1); background: #000; }
+
+.card-glass {
+    background: var(--bg-surface); border: 1px solid var(--border-color);
+    padding: 25px; backdrop-filter: blur(10px); position: relative;
+    display: flex; flex-direction: column;
+}
+.card-glass::before { content:''; position:absolute; top:0; left:0; width:40px; height:2px; background:var(--neon-cyan); }
+
+/* =========================================
+   各頁面特殊樣式
+   ========================================= */
+/* 首頁大廳 */
+.dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; }
+.hero-card { grid-column: 1 / -1; background: linear-gradient(135deg, rgba(0,240,255,0.1), rgba(0,0,0,0.8)); border: 1px solid var(--border-color); padding: 40px; border-left: 5px solid var(--neon-cyan); display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
+.hero-img { flex-shrink: 0; width: 180px; height: 180px; border-radius: 12px; border: 3px solid var(--neon-cyan); box-shadow: 0 0 25px rgba(0,240,255,0.4); background: #000; padding: 15px; }
+.hero-img svg { width: 100%; height: 100%; display: block; }
+.hero-content { flex: 1; min-width: 280px; }
+.hero-content h2 { font-size: clamp(32px, 5vw, 48px); margin:0 0 15px; font-style:italic; }
+.hero-content p { font-size: 16px; color: var(--text-muted); line-height: 1.6; max-width: 600px; margin-bottom: 30px; }
+
+/* 訓練場 */
+.training-layout { display: flex; gap: 30px; flex-wrap: wrap;}
+.canvas-box { flex: 1; min-width: 300px; background: #000; border: 1px solid #333; position: relative; display: flex; justify-content: center; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); }
+.control-box { width: 350px; display: flex; flex-direction: column; gap: 20px; }
+.slider-group label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; letter-spacing: 1px;}
+.slider-group input[type=range] { width: 100%; accent-color: var(--neon-cyan); height: 4px; background: #333; outline: none; appearance: none; cursor: pointer; margin-bottom: 15px;}
+.slider-group input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: var(--neon-cyan); transform: rotate(45deg); cursor: pointer; }
+
+/* 答題系統 */
+.quiz-box { max-width: 800px; margin: 0 auto; }
+.q-text { font-size: 24px; font-weight: 700; line-height: 1.6; text-align: center; padding: 50px 30px; background: rgba(0,0,0,0.4); border: 1px solid #333; margin-bottom: 30px; border-top: 3px solid var(--neon-cyan); }
+.opt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.opt-btn { background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #444; padding: 25px 15px; font-size: 18px; font-weight: 900; cursor: pointer; transition: 0.2s; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.opt-btn:hover:not(:disabled) { border-color: var(--neon-cyan); background: rgba(0,240,255,0.1); transform: translateY(-5px); }
+.opt-btn.correct { background: rgba(0,255,102,0.2) !important; color: var(--neon-green); border-color: var(--neon-green); }
+.opt-btn.wrong { background: rgba(255,0,85,0.2) !important; color: var(--neon-magenta); border-color: var(--neon-magenta); }
+
+/* 賽程表 */
+.bracket-scroll { overflow-x: auto; padding: 20px 0 40px; min-height: 400px; display: flex; position: relative; }
+.bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 30px; min-width: 220px; padding: 0 30px; position: relative; z-index: 10; }
+.match-card { background: var(--bg-surface); border: 1px solid #333; padding: 10px; position: relative; border-left: 3px solid var(--neon-cyan); }
+.match-card.active { border-color: var(--neon-cyan); background: #000; box-shadow: 0 0 15px rgba(0,240,255,0.2); }
+.p-slot { padding: 10px; background: #000; border: 1px solid #222; margin-bottom: 5px; font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; position: relative; transition: 0.2s; }
+.p-slot:hover { border-color: var(--neon-cyan); }
+.p-slot.selected { background: rgba(0,240,255,0.2); border-color: var(--neon-cyan); transform: scale(1.05); z-index: 20; }
+.p-slot.winner { color: var(--neon-yellow); border-color: var(--neon-yellow); }
+.p-slot.empty { color: #555; border-style: dashed; }
+.del-btn { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--neon-magenta); font-size: 16px; cursor: pointer; opacity: 0; transition: 0.2s; border:none; background:transparent;}
+.p-slot:hover .del-btn { opacity: 1; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; place-items: center; }
+.modal-overlay.show { display: grid; }
+.modal-box { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 40px; width: 90%; max-width: 400px; border-top: 4px solid var(--neon-magenta); text-align: center;}
+/* RWD: 手機版底部導航 */
+@media (max-width: 768px) {
+    #terminal-app { flex-direction: column-reverse; }
+    #sidebar { width: 100%; height: 70px; flex-direction: row; border-right: none; border-top: 1px solid var(--border-color); }
+    #sidebar.collapsed { height: 0; border: none; opacity: 0; }
+    .brand-area, .admin-area { display: none; }
+    .nav-menu { flex-direction: row; padding: 0; gap: 0; overflow-x: auto; overflow-y: hidden; }
+    .nav-item { flex: 1; justify-content: center; flex-direction: column; gap: 5px; padding: 10px 5px; font-size: 11px; border-left: none; border-bottom: 3px solid transparent;}
+    .nav-item.active { border-left: none; border-bottom-color: var(--neon-cyan); background: linear-gradient(0deg, rgba(0,240,255,0.1), transparent); }
+    .nav-icon { font-size: 20px; }
+    #top-bar { padding: 0 15px; }
+    #view-container { padding: 15px; }
+    
+    /* 手機版改回單行堆疊 */
+    .dashboard-grid { grid-template-columns: 1fr; }
+    
+    .opt-grid { grid-template-columns: 1fr; }
+    .hero-card { justify-content: center; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div id="terminal-app">
+    
+    <!-- 左側導覽列 (Side Nav) -->
+    <aside id="sidebar">
+        <div class="brand-area">
+            <div class="brand-text font-cyber">
+                <h1 class="rgb-glow">導火線：切點引爆</h1>
+            </div>
+        </div>
+        
+        <nav class="nav-menu">
+            <div class="nav-item active" onclick="switchTab('home')">
+                <span class="nav-icon">🏠</span><span>首頁大廳</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('training')">
+                <span class="nav-icon">📐</span><span>交點模擬</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('speedrun')">
+                <span class="nav-icon">⚡</span><span>單人特訓</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('arena')">
+                <span class="nav-icon">⚔️</span><span>排位賽</span>
+            </div>
+            <!-- 手機版隱藏 ADMIN -->
+            <div class="nav-item" style="display:none;" id="nav-admin" onclick="switchTab('admin')">
+                <span class="nav-icon">🛡️</span><span>賽事控制台</span>
+            </div>
+        </nav>
+        
+        <div class="admin-area">
+            <button class="btn-cyber pink" style="width:100%; font-size:12px; padding: 10px;" onclick="openAuth()"><span>系統管理員 (ADMIN)</span></button>
+        </div>
+    </aside>
+
+    <!-- 主工作區 (Main Content) -->
+    <main id="main-workspace">
+        
+        <header id="top-bar">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button onclick="toggleSidebar()" class="btn-cyber" style="padding: 5px 12px; font-size: 16px; margin: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);">☰</button>
+                <div class="sys-status font-cyber">伺服器連線中</div>
+            </div>
+        </header>
+
+        <div id="view-container">
+            
+            <!-- 1. 首頁 (Home Dashboard) -->
+            <div id="view-home" class="view-panel active">
+                <div class="dashboard-grid">
+                    <div class="hero-card">
+                        <div class="hero-img" style="background:#000; border-radius:12px; overflow:hidden; border:2px solid var(--neon-cyan); display:flex; justify-content:center; align-items:center; padding:10px;">
+                            <!-- 專屬設計：割線與切線幾何引爆圖示 -->
+                            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%;">
+                                <defs>
+                                    <filter id="neonGlow">
+                                        <feGaussianBlur stdDeviation="2.5" result="blur" />
+                                        <feMerge>
+                                            <feMergeNode in="blur"/>
+                                            <feMergeNode in="SourceGraphic"/>
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+                                <!-- 核心目標 (圓形) -->
+                                <circle cx="100" cy="100" r="60" fill="none" stroke="rgba(0, 240, 255, 0.3)" stroke-width="2" stroke-dasharray="4 4" />
+                                <circle cx="100" cy="100" r="3" fill="#00f0ff" filter="url(#neonGlow)" />
+                                
+                                <!-- 割線 (Secant) - 貫穿核心 -->
+                                <line x1="20" y1="40" x2="180" y2="160" stroke="#ff0055" stroke-width="2" filter="url(#neonGlow)"/>
+                                <circle cx="52" cy="64" r="5" fill="#ff0055" filter="url(#neonGlow)" />
+                                <circle cx="148" cy="136" r="5" fill="#ff0055" filter="url(#neonGlow)" />
+                                <text x="25" y="30" fill="#ff0055" font-size="10" font-weight="900" class="font-cyber">割線 (2 交點)</text>
+
+                                <!-- 切線 (Tangent) - 邊緣接觸 -->
+                                <line x1="20" y1="160" x2="180" y2="160" stroke="#ffe600" stroke-width="3" filter="url(#neonGlow)"/>
+                                <!-- 切點引爆圈 -->
+                                <circle cx="100" cy="160" r="10" fill="none" stroke="#ffe600" stroke-width="2" filter="url(#neonGlow)">
+                                    <animate attributeName="r" values="8;14;8" dur="1.5s" repeatCount="indefinite"/>
+                                    <animate attributeName="opacity" values="1;0;1" dur="1.5s" repeatCount="indefinite"/>
+                                </circle>
+                                <circle cx="100" cy="160" r="4" fill="#fff" filter="url(#neonGlow)" />
+                                <text x="115" y="150" fill="#ffe600" font-size="10" font-weight="900" class="font-cyber">切點引爆 (1 交點)</text>
+                                
+                                <!-- 動態導火線火花 (沿著切線燃燒) -->
+                                <circle cx="20" cy="160" r="4" fill="#fff" filter="url(#neonGlow)">
+                                    <animate attributeName="cx" values="20;100" dur="1.5s" repeatCount="indefinite" />
+                                </circle>
+                            </svg>
+                        </div>
+                        <div class="hero-content">
+                            <h2 class="font-cyber rgb-glow">導火線：切點引爆</h2>
+                            <p>登入臨界戰術網路。引燃導火線、精準鎖定切點，在極速幾何演算中引爆對手，證明你才是戰線中唯一的王牌！</p>
+                            <button class="btn-cyber font-cyber" onclick="switchTab('arena')"><span>啟動連線 // 進入排位</span></button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-glass">
+                        <div style="font-size:30px; color:var(--neon-cyan); margin-bottom:15px;">📐</div>
+                        <h3 class="font-cyber" style="margin:0 0 10px; font-size:18px;">【訓練艙】交點模擬器</h3>
+                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">全方位360度旋轉雷射，實時觀測割線與切線的臨界變化。</p>
+                        <button class="btn-cyber" style="width:100%; font-size:13px; padding:10px;" onclick="switchTab('training')"><span>進入模擬</span></button>
+                    </div>
+                    
+                    <div class="card-glass">
+                        <div style="font-size:30px; color:var(--neon-magenta); margin-bottom:15px;">⚡</div>
+                        <h3 class="font-cyber" style="margin:0 0 10px; font-size:18px;">【單人】60秒極限生存</h3>
+                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">高壓限時判斷！系統不斷拋出參數，唯有連續精準命中才能存活。</p>
+                        <button class="btn-cyber pink" style="width:100%; font-size:13px; padding:10px;" onclick="switchTab('speedrun')"><span>開始特訓</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 交點模擬器 (Training) -->
+            <div id="view-training" class="view-panel">
+                <div class="section-header">
+                    <h2 class="font-cyber">【訓練艙】交點模擬</h2>
+                    <p class="font-cyber">觀測平台</p>
+                </div>
+                
+                <div class="training-layout">
+                    <div class="canvas-box">
+                        <svg id="radarSvg" viewBox="0 0 440 330" style="width:100%; height:100%; cursor: crosshair;" 
+                             onmousedown="dragLineStart(event)" ontouchstart="dragLineStart(event)">
+                          <circle id="radarCore" cx="220" cy="165" r="95" fill="var(--neon-cyan)" fill-opacity=".05" stroke="var(--neon-cyan)" stroke-width="2" stroke-dasharray="4 4"/>
+                          <circle cx="220" cy="165" r="4" fill="#fff"/>
+                          <text x="230" y="178" fill="#fff" font-size="12" class="font-cyber">核心</text>
+                          <g id="radarDynamic"></g>
+                        </svg>
+                    </div>
+                    
+                    <div class="control-box">
+                        <div class="card-glass slider-group">
+                            <label><span>核心半徑 (r)</span><span id="val-radius" style="color:var(--neon-green)">95</span></label>
+                            <input id="slider-radius" type="range" min="10" max="150" value="95" oninput="syncRadar()">
+                            
+                            <label style="margin-top:20px;"><span>雷射距離 (d)</span><span id="val-dist" style="color:var(--neon-yellow)">75</span></label>
+                            <input id="slider-dist" type="range" min="-200" max="200" value="75" oninput="syncRadar()">
+                            
+                            <label style="margin-top:20px;"><span>發射角度 (θ)</span><span id="val-angle" style="color:var(--neon-cyan)">0°</span></label>
+                            <input id="slider-angle" type="range" min="0" max="360" value="0" oninput="syncRadar()">
+                        </div>
+                        
+                        <div class="card-glass" style="border-left: 4px solid var(--neon-cyan);">
+                            <div style="font-size:12px; color:var(--neon-cyan); font-weight:700; margin-bottom:10px;" class="font-cyber">[ 系統判定結果 ]</div>
+                            <div id="radar-result" style="font-size:22px; font-weight:900; margin-bottom:8px; font-style:italic;">割線 // 2 交點</div>
+                            <div id="radar-detail" style="font-size:13px; color:var(--text-muted); line-height:1.6;">參數 d < r，軌跡穿越核心區域。</div>
+                            <button class="btn-cyber" style="width:100%; margin-top:20px; font-size:12px; padding:10px;" onclick="autoAimTangent()"><span>自動鎖定切線 (AUTO-AIM)</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 單人極限生存 (Speedrun) -->
+            <div id="view-speedrun" class="view-panel">
+                <div class="quiz-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;" class="font-cyber">
+                        <span style="color:var(--neon-magenta); font-weight:900;" id="qz-timer-txt">剩餘時間: 60s</span>
+                        <span style="color:var(--neon-yellow); font-weight:900;" id="qz-score-txt">當前分數: 0</span>
+                    </div>
+                    <div style="height:6px; background:#222; margin-bottom:40px; position:relative;">
+                        <div id="qz-bar" style="height:100%; background:var(--neon-cyan); width:0%; transition: 0.3s; box-shadow:0 0 10px var(--neon-cyan);"></div>
+                    </div>
+                    
+                    <div id="qz-text" class="q-text">點擊下方按鈕啟動特訓。</div>
+                    <div id="qz-options" class="opt-grid"></div>
+                    
+                    <div id="qz-feedback" style="margin-top:30px; padding:20px; border:1px solid #333; background:rgba(0,0,0,0.5); display:none; line-height:1.6; font-size:15px; font-weight:700;"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-top:30px; align-items:center;">
+                        <span id="qz-combo" style="color:var(--neon-yellow); font-weight:900; font-size:18px; font-style:italic;" class="font-cyber">連擊 x0</span>
+                        <button id="qz-next-btn" class="btn-cyber pink" onclick="startLocalQuiz()" style="padding:15px 40px;"><span>啟動 // 開始特訓</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 排位競技場 (Arena) -->
+            <div id="view-arena" class="view-panel">
+                 <div class="section-header" style="text-align:center;">
+                    <h2 class="font-cyber rgb-glow">【排位賽】即時同步對決</h2>
+                    <p class="font-cyber">點對點戰鬥網路</p>
+                </div>
+                
+                <!-- Setup -->
+                <div id="arena-setup" style="max-width:500px; margin: 40px auto;">
+                    <div class="card-glass">
+                        <label style="display:block; color:var(--text-muted); font-size:12px; margin-bottom:10px; font-weight:900;" class="font-cyber">特務代號 (ID)</label>
+                        <input type="text" id="inp-mp-name" class="cyber-input font-cyber" value="Player_01" maxlength="10" style="margin-bottom:30px; text-align:center;">
+                        
+                        <button onclick="hostMatch()" class="btn-cyber pink" style="width:100%; margin-bottom:30px;"><span>建立房間</span></button>
+                        
+                        <div style="text-align:center; position:relative; margin-bottom:30px;">
+                            <hr style="border-color:#333; margin:0; position:absolute; top:50%; width:100%; z-index:1;">
+                            <span style="background:var(--bg-surface); padding:0 15px; position:relative; z-index:2; color:var(--text-muted); font-size:12px;" class="font-cyber">或加入現有對局</span>
+                        </div>
+                        
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="inp-mp-code" class="cyber-input font-cyber" placeholder="輸入 4 碼連線密鑰" maxlength="4" style="text-align:center;">
+                            <button onclick="joinMatch()" class="btn-cyber yellow"><span>加入</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matchmaking Wait -->
+                <div id="arena-wait" class="hidden" style="text-align:center; max-width:600px; margin: 40px auto;">
+                    <h3 style="font-size:24px; color:var(--neon-cyan); margin-bottom:10px;" class="font-cyber italic">連線配對中...</h3>
+                    <p style="color:var(--text-muted); font-size:14px; margin-bottom:40px;">將密鑰傳送給對手</p>
+                    
+                    <div style="background:rgba(255,0,85,0.1); border:1px solid var(--neon-magenta); padding:20px; display:inline-block; margin-bottom:50px;">
+                        <div style="font-size:12px; color:var(--neon-magenta); font-weight:900; margin-bottom:5px;" class="font-cyber">連線密鑰</div>
+                        <div id="ui-room-code" style="font-size:48px; color:#fff; font-weight:900; letter-spacing:10px;" class="font-cyber">----</div>
+                    </div>
+                    
+                    <div style="display:flex; justify-content:center; gap:40px; align-items:center;">
+                        <div style="text-align:center;">
+                            <div style="width:60px; height:60px; border:2px solid var(--neon-cyan); background:rgba(0,240,255,0.1); margin:0 auto 10px; display:grid; place-items:center; transform:rotate(45deg);"><span style="transform:rotate(-45deg); font-weight:900; color:var(--neon-cyan);">P1</span></div>
+                            <div id="ui-host-name" style="font-weight:900; color:var(--neon-cyan);" class="font-cyber">Player_1</div>
+                        </div>
+                        <div style="font-size:24px; color:#555; font-style:italic; font-weight:900;" class="font-cyber">VS</div>
+                        <div style="text-align:center;" id="box-guest">
+                            <div style="width:60px; height:60px; border:2px dashed #555; margin:0 auto 10px; display:grid; place-items:center; transform:rotate(45deg); animation:pulse 2s infinite;"><span style="transform:rotate(-45deg); font-weight:900; color:#555;">?</span></div>
+                            <div style="font-weight:900; color:#555;" class="font-cyber">尋找對手中</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combat UI -->
+                <div id="arena-combat" class="hidden quiz-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:20px; background:rgba(0,0,0,0.6); border:1px solid #333; margin-bottom:40px;">
+                        <div style="text-align:center; flex:1;">
+                            <div id="ui-p1-name" style="color:var(--neon-cyan); font-weight:900; font-size:14px; margin-bottom:5px;" class="font-cyber">P1</div>
+                            <div id="ui-p1-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
+                        </div>
+                        <div style="padding:0 30px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">
+                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:10px;" class="font-cyber">第 1 回合 / 共 10 回合</div>
+                            <div style="font-size:24px; color:#444; font-weight:900; font-style:italic;" class="font-cyber">VS</div>
+                        </div>
+                        <div style="text-align:center; flex:1;">
+                            <div id="ui-p2-name" style="color:var(--neon-magenta); font-weight:900; font-size:14px; margin-bottom:5px;" class="font-cyber">P2</div>
+                            <div id="ui-p2-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
+                        </div>
+                    </div>
+                    
+                    <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
+                    <div id="ui-combat-opts" class="opt-grid"></div>
+                    <div id="ui-combat-status" style="text-align:center; margin-top:30px; font-weight:900; color:var(--neon-cyan); letter-spacing:2px;" class="font-cyber">等待輸入指令...</div>
+                </div>
+
+                <!-- Result UI -->
+                <div id="arena-result" class="hidden" style="text-align:center; max-width:600px; margin:40px auto; padding:50px; background:rgba(0,0,0,0.5); border-top:5px solid var(--neon-yellow);">
+                    <div style="font-size:14px; color:var(--text-muted); font-weight:900; letter-spacing:4px; margin-bottom:20px;" class="font-cyber">戰鬥結算</div>
+                    <h3 id="ui-res-title" style="font-size:48px; color:var(--neon-yellow); margin-bottom:40px; font-style:italic; text-shadow:0 0 20px rgba(255,230,0,0.5);" class="font-cyber">勝利</h3>
+                    
+                    <div style="display:flex; justify-content:space-around; margin-bottom:50px; align-items:center;">
+                        <div>
+                            <div id="ui-res-p1n" style="color:var(--neon-cyan); font-weight:900; margin-bottom:10px;" class="font-cyber">P1</div>
+                            <div id="ui-res-p1s" style="font-size:48px; color:#fff; font-weight:900;" class="font-cyber">0</div>
+                        </div>
+                        <div style="font-size:24px; color:#555; font-style:italic; font-weight:900;" class="font-cyber">VS</div>
+                        <div>
+                            <div id="ui-res-p2n" style="color:var(--neon-magenta); font-weight:900; margin-bottom:10px;" class="font-cyber">P2</div>
+                            <div id="ui-res-p2s" style="font-size:48px; color:#fff; font-weight:900;" class="font-cyber">0</div>
+                        </div>
+                    </div>
+                    <button class="btn-cyber yellow" onclick="resetArena()"><span>返回 // 排位大廳</span></button>
+                </div>
+            </div>
+
+            <!-- 5. 賽事控制台 (Admin Bracket) -->
+            <div id="view-admin" class="view-panel">
+                <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div>
+                        <h2 class="font-cyber rgb-text">【ADMIN】賽事控制台</h2>
+                        <p class="font-cyber">錦標賽網路</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:900;" class="font-cyber">專屬賽事密鑰</span><br>
+                        <span id="ui-tour-code" style="font-size:24px; color:var(--neon-yellow); font-weight:900; letter-spacing:4px; text-shadow:0 0 15px rgba(255,230,0,0.5);" class="font-cyber">----</span>
+                    </div>
+                </div>
+                
+                <div class="card-glass" style="margin-bottom:30px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:20px;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <label style="font-size:12px; font-weight:900; color:var(--text-muted);" class="font-cyber">參賽人數</label>
+                        <input type="number" id="inp-tour-size" value="8" min="2" max="32" class="cyber-input font-cyber" style="width:80px; padding:10px; text-align:center;">
+                        <button class="btn-cyber" style="padding:10px 20px; font-size:12px;" onclick="genBracket()"><span>生成賽程表</span></button>
+                    </div>
+                    <button class="btn-cyber pink" style="padding:10px 20px; font-size:12px;" onclick="fillAIBots()"><span>自動填入虛擬對手</span></button>
+                </div>
+                <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 學生使用上方專屬密鑰加入排位賽。點擊任兩位選手交換位置。懸停點擊 ✖ 刪除。遇到種子選手 (輪空) 點擊開始將直接晉級。</p>
+                
+                <div class="bracket-scroll">
+                    <svg id="bracket-svg" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(0,240,255,0.4));"></svg>
+                    <div id="bracket-cols" style="display: flex; gap: 50px; position: relative; z-index: 10;"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- Modal / Toast -->
+<div id="sys-toast" style="position:fixed; bottom:30px; left:50%; transform:translate(-50%,20px); background:var(--neon-cyan); color:#000; padding:15px 30px; font-weight:900; letter-spacing:2px; font-size:14px; opacity:0; transition:0.3s; pointer-events:none; z-index:9999; box-shadow:0 5px 20px rgba(0,240,255,0.5);" class="font-cyber">系統訊息</div>
+
+<div id="auth-overlay" class="modal-overlay">
+    <div class="modal-box">
+        <h3 style="color:var(--neon-magenta); font-size:20px; margin:0 0 20px; font-style:italic;" class="font-cyber">管理員權限覆寫</h3>
+        <input type="password" id="inp-admin-pwd" class="cyber-input font-cyber" style="text-align:center; font-size:24px; letter-spacing:8px; margin-bottom:25px;" onkeypress="if(event.key==='Enter') verifyAdmin()">
+        <div style="display:flex; gap:15px;">
+            <button class="btn-cyber" style="flex:1;" onclick="closeAuth()"><span>取消</span></button>
+            <button class="btn-cyber pink" style="flex:1;" onclick="verifyAdmin()"><span>授權進入</span></button>
+        </div>
+    </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const sysNotify = (msg) => {
+      let el = $('sys-toast'); el.textContent = msg;
+      el.style.opacity = '1'; el.style.transform = 'translate(-50%,0)';
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%,20px)'; }, 2500);
+  };
+
+  // 全域變數
+  let globalTimer = null;
+  let myId = Math.random().toString(36).substring(2,6).toUpperCase();
+  // 移除修改 UI 的 myId 避免報錯
+  window.tourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+  $('ui-tour-code').textContent = window.tourCode;
+
+  // --- 側邊欄收合控制 (Sidebar Toggle) ---
+  window.toggleSidebar = () => {
+      $('sidebar').classList.toggle('collapsed');
+      // 當在 Admin 頁面時，選單收合會影響版面寬度，因此延遲重繪連線動畫確保正確
+      if($('view-admin').classList.contains('active')) {
+          setTimeout(drawBracketPaths, 350); 
+      }
+  };
+
+  // --- 導覽切換 (Terminal Tab Switch) ---
+  window.switchTab = (tabId) => {
+      clearInterval(globalTimer);
+      
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeNav = document.querySelector(`.nav-item[onclick="switchTab('${tabId}')"]`);
+      if(activeNav) activeNav.classList.add('active');
+      
+      if(tabId === 'admin') $('nav-admin').style.display = 'flex';
+
+      document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
+      $(`view-${tabId}`).classList.add('active');
+
+      if(tabId === 'training') syncRadar();
+      if(tabId === 'speedrun') resetLocalQuizUI();
+      if(tabId === 'arena') resetArena();
+      if(tabId === 'admin') {
+          if(trnData.length === 0) genBracket();
+          else { renderBracketUI(); setTimeout(drawBracketPaths, 50); }
+      }
+  };
+
+  // --- 權限 (Admin Auth) ---
+  window.openAuth = () => { $('auth-overlay').classList.add('show'); $('inp-admin-pwd').value=''; $('inp-admin-pwd').focus(); };
+  window.closeAuth = () => { $('auth-overlay').classList.remove('show'); };
+  window.verifyAdmin = () => {
+      if($('inp-admin-pwd').value === '1234'){ closeAuth(); switchTab('admin'); }
+      else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
+  };
+
+  // --- 題庫引擎 ---
+  function getGeoTask(){
+      let r = 3 + Math.floor(Math.random()*8); 
+      let type = Math.random(), d, ans, explain;
+      if(type < 0.35){ d = Math.max(0, r - (Math.floor(Math.random()*3)+1)); ans = 2; explain = `d=${d} < r=${r}，雷射穿越核心，產生 2 個交點。`; }
+      else if(type < 0.7){ d = r; ans = 1; explain = `d=r=${r}，精準接觸臨界，產生 1 個切點。`; }
+      else { d = r + Math.floor(Math.random()*4)+1; ans = 0; explain = `d=${d} > r=${r}，軌跡偏離核心，產生 0 個交點。`; }
+      let text = `目標半徑 <span style="color:var(--neon-green)">r = ${r}</span><br>軌跡距離 <span style="color:var(--neon-yellow)">d = ${d}</span><br><br>請求交點數量判定。`;
+      return { text, opts: [{t:'0 交點',v:0}, {t:'1 交點',v:1}, {t:'2 交點',v:2}], ans, explain };
+  }
+
+  // --- 1. 交點模擬 (Training) ---
+  let isDraggingRadar = false;
+  window.syncRadar = () => {
+      const r = parseInt($('slider-radius').value) || 95;
+      const d = parseInt($('slider-dist').value) || 0;
+      const absD = Math.abs(d);
+      const angle = parseInt($('slider-angle').value) || 0;
+      const rad = angle * Math.PI / 180;
+      const cx = 220, cy = 165;
+      const vx = Math.cos(rad), vy = Math.sin(rad), nx = -Math.sin(rad), ny = Math.cos(rad);
+      const px = cx + d * nx, py = cy - d * ny; 
+      const lineLen = 300;
+      
+      let g = `<line x1="${px - lineLen * vx}" y1="${py + lineLen * vy}" x2="${px + lineLen * vx}" y2="${py - lineLen * vy}" stroke="var(--neon-magenta)" stroke-width="3" style="filter: drop-shadow(0 0 8px var(--neon-magenta));" />
+               <line x1="${cx}" y1="${cy}" x2="${px}" y2="${py}" stroke="var(--neon-yellow)" stroke-width="2" stroke-dasharray="4 4" />`;
+      
+      let res='', det='';
+      if (absD < r) {
+          const distI = Math.sqrt(r*r - absD*absD);
+          g += `<circle cx="${px - distI*vx}" cy="${py + distI*vy}" r="6" fill="var(--neon-cyan)" stroke="#000" stroke-width="2" style="filter: drop-shadow(0 0 5px var(--neon-cyan));"/>
+                <circle cx="${px + distI*vx}" cy="${py - distI*vy}" r="6" fill="var(--neon-cyan)" stroke="#000" stroke-width="2" style="filter: drop-shadow(0 0 5px var(--neon-cyan));"/>`;
+          res = '割線 // 2 交點'; resColor = 'var(--neon-cyan)'; det = `d=${absD} < r=${r}。軌跡穿越核心區域。`;
+      } else if (absD === r) {
+          g += `<circle cx="${px}" cy="${py}" r="7" fill="var(--neon-green)" stroke="#000" stroke-width="2" style="filter: drop-shadow(0 0 5px var(--neon-green));"/>`;
+          res = '切線 // 鎖定引爆'; resColor = 'var(--neon-green)'; det = `d=${absD} = r=${r}。精準臨界接觸。`;
+      } else {
+          res = '無效 // 軌跡偏離'; resColor = 'var(--text-muted)'; det = `d=${absD} > r=${r}。未接觸核心。`;
+      }
+      
+      $('radarCore').setAttribute('r', r); $('val-radius').textContent = r;
+      $('val-dist').textContent = absD; $('val-angle').textContent = angle + '°';
+      $('radar-result').textContent = res; $('radar-result').style.color = resColor;
+      $('radar-detail').textContent = det; $('radarDynamic').innerHTML = g;
+  };
+  window.autoAimTangent = () => { $('slider-dist').value = $('slider-radius').value; syncRadar(); };
+  window.dragLineStart = (e) => { isDraggingRadar = true; e.preventDefault(); };
+  window.addEventListener('mousemove', (e) => { if(isDraggingRadar) procDrag(e.clientX, e.clientY); });
+  window.addEventListener('touchmove', (e) => { if(isDraggingRadar){ e.preventDefault(); procDrag(e.touches[0].clientX, e.touches[0].clientY); } }, {passive: false});
+  window.addEventListener('mouseup', () => isDraggingRadar = false);
+  window.addEventListener('touchend', () => isDraggingRadar = false);
+  function procDrag(cxClient, cyClient) {
+      const rect = $('radarSvg').getBoundingClientRect();
+      const xSvg = (cxClient - rect.left) * (440 / rect.width), ySvg = (cyClient - rect.top) * (330 / rect.height);
+      const rad = (parseInt($('slider-angle').value) || 0) * Math.PI / 180;
+      let nDist = Math.round((xSvg - 220) * -Math.sin(rad) + (165 - ySvg) * Math.cos(rad));
+      $('slider-dist').value = Math.max(-200, Math.min(200, nDist)); syncRadar();
+  }
+
+  // --- 2. 單人特訓 (Speedrun) ---
+  let locQ = { qArr:[], idx:0, sc:0, cb:0, ansd:false };
+  function resetLocalQuizUI() {
+      $('qz-timer-txt').textContent = "剩餘時間: 60s"; $('qz-score-txt').textContent = "當前分數: 0";
+      $('qz-bar').style.width = '0%'; $('qz-text').textContent = "準備就緒。點擊下方按鈕啟動特訓。";
+      $('qz-options').innerHTML = ''; $('qz-feedback').style.display = 'none';
+      $('qz-combo').textContent = '連擊 x0';
+      $('qz-next-btn').style.display = 'inline-flex';
+      $('qz-next-btn').innerHTML = '<span>啟動 // 開始特訓</span>';
+      $('qz-next-btn').onclick = startLocalQuiz;
+  }
+  window.startLocalQuiz = () => {
+      locQ = { qArr: Array.from({length:10}, getGeoTask), idx:0, sc:0, cb:0, ansd:false };
+      let t = 60; $('qz-timer-txt').textContent = `剩餘時間: ${t}s`;
+      clearInterval(globalTimer);
+      globalTimer = setInterval(() => {
+          t--; $('qz-timer-txt').textContent = `剩餘時間: ${t}s`;
+          if(t<=0) endLocalQuiz(true);
+      }, 1000);
+      $('qz-next-btn').onclick = nextLocalQuiz;
+      drawLocalQ();
+  };
+  function drawLocalQ(){
+      if(locQ.idx >= locQ.qArr.length) return endLocalQuiz(false);
+      locQ.ansd = false; let q = locQ.qArr[locQ.idx];
+      $('qz-score-txt').textContent = `當前分數: ${locQ.sc}`;
+      $('qz-bar').style.width = ((locQ.idx / locQ.qArr.length) * 100) + '%';
+      $('qz-text').innerHTML = q.text; $('qz-feedback').style.display = 'none';
+      $('qz-next-btn').disabled = true; $('qz-next-btn').innerHTML = '<span>確認 // 繼續推進</span>';
+      $('qz-combo').textContent = `連擊 x${locQ.cb}`;
+      $('qz-options').innerHTML = q.opts.map((o,i) => `<button class="opt-btn" id="qz-opt-${i}" onclick="evalLocalQ(${i},${q.ans})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
+  }
+  window.evalLocalQ = (idx, ans) => {
+      if(locQ.ansd) return; locQ.ansd = true;
+      let ok = (idx === ans);
+      [0,1,2].forEach(i => {
+          let b = $(`qz-opt-${i}`); b.disabled = true;
+          if(i===ans) b.classList.add('correct');
+          if(i===idx && !ok) b.classList.add('wrong');
+      });
+      let fb = $('qz-feedback'); fb.style.display = 'block';
+      if(ok) {
+          locQ.cb++; locQ.sc += 100 + Math.max(0, locQ.cb-1)*20;
+          fb.style.borderColor = 'var(--neon-green)'; fb.style.color = 'var(--neon-green)';
+          fb.innerHTML = `[成功] ${locQ.qArr[locQ.idx].explain}`;
+      } else {
+          locQ.cb = 0;
+          fb.style.borderColor = 'var(--neon-magenta)'; fb.style.color = 'var(--neon-magenta)';
+          fb.innerHTML = `[失誤] ${locQ.qArr[locQ.idx].explain}`;
+      }
+      $('qz-score-txt').textContent = `當前分數: ${locQ.sc}`; $('qz-combo').textContent = `連擊 x${locQ.cb}`;
+      $('qz-next-btn').disabled = false;
+      if(locQ.idx === locQ.qArr.length-1) $('qz-next-btn').innerHTML = '<span>查看戰果 // 結算</span>';
+  };
+  window.nextLocalQuiz = () => { if(locQ.ansd){ locQ.idx++; drawLocalQ(); } };
+  function endLocalQuiz(timeout) {
+      clearInterval(globalTimer);
+      $('qz-bar').style.width = '100%';
+      $('qz-text').innerHTML = `<div style="font-size:32px; color:var(--neon-cyan); font-style:italic;" class="font-cyber">測驗結束</div><div style="font-size:18px; color:var(--text-muted); margin-top:10px;">${timeout?'時間耗盡':'所有測試序列完成'}</div>`;
+      $('qz-options').innerHTML = '';
+      $('qz-feedback').style.display='block'; $('qz-feedback').style.borderColor='var(--neon-yellow)'; $('qz-feedback').style.color='var(--neon-yellow)';
+      $('qz-feedback').innerHTML = `最終分數: <span style="font-size:24px;" class="font-cyber">${locQ.sc}</span><br>最高連擊: ${locQ.cb}`;
+      $('qz-next-btn').innerHTML = '<span>重新啟動 // 再次佈署</span>';
+      $('qz-next-btn').disabled = false; $('qz-next-btn').onclick = startLocalQuiz;
+  }
+
+  // --- 3. 排位對決 (真實連線 MQTT 版) ---
+  let netState = null;
+  let mqtt = null;
+  let mqttRole = null; // 'HOST', 'CLIENT', 'ADMIN'
+  let mqttRoom = null;
+
+  function connectMqtt(room, role, onSuccess) {
+      if (mqtt) { mqtt.disconnect(); mqtt = null; }
+      mqttRoom = room;
+      mqttRole = role;
+      const clientId = "tt_" + myId + "_" + Math.floor(Math.random()*10000);
+      
+      mqtt = new Paho.MQTT.Client("broker.emqx.io", 8084, "/mqtt", clientId);
+
+      mqtt.onConnectionLost = (resp) => { if(resp.errorCode !== 0) sysNotify("連線中斷: " + resp.errorMessage); };
+      mqtt.onMessageArrived = (msg) => {
+          try {
+              let data = JSON.parse(msg.payloadString);
+              handleMqttData(data);
+          } catch(e) {}
+      };
+
+      mqtt.connect({
+          useSSL: true,
+          onSuccess: () => {
+              mqtt.subscribe("tactical_2026/room/" + room);
+              if(onSuccess) onSuccess();
+          },
+          onFailure: () => sysNotify("連線失敗，請檢查網路")
+      });
+  }
+
+  function sendMqtt(data) {
+      if(!mqtt || !mqttRoom) return;
+      let msg = new Paho.MQTT.Message(JSON.stringify(data));
+      msg.destinationName = "tactical_2026/room/" + mqttRoom;
+      mqtt.send(msg);
+  }
+
+  function resetArena(){
+      $('arena-setup').style.display='block'; $('arena-wait').style.display='none';
+      $('arena-combat').style.display='none'; $('arena-result').style.display='none';
+      if(mqttRole !== 'ADMIN' && mqtt) { mqtt.disconnect(); mqtt = null; }
+      netState = null;
+  }
+
+  window.hostMatch = () => {
+      let n = $('inp-mp-name').value.trim()||"Player_1";
+      let code = Math.random().toString(36).substring(2,6).toUpperCase();
+      netState = { rid:code, stat:'wait', cIdx:0, qs:Array.from({length:10}, getGeoTask), h:{id:myId, n:n, s:0, a:false, v:null}, g:{id:null, n:null, s:0, a:false, v:null} };
+
+      $('arena-setup').style.display='none'; $('arena-wait').style.display='block';
+      $('ui-room-code').textContent = code; $('ui-host-name').textContent = n;
+      $('box-guest').innerHTML=`<div style="width:60px; height:60px; border:2px dashed #555; margin:0 auto 10px; display:grid; place-items:center; transform:rotate(45deg); animation:pulse 2s infinite;"><span style="transform:rotate(-45deg); font-weight:900; color:#555;">?</span></div><div style="font-weight:900; color:#555;" class="font-cyber">尋找對手中...</div>`;
+
+      connectMqtt(code, 'HOST', () => sysNotify("對戰房間建立成功，等待對手加入"));
+  };
+
+  window.joinMatch = () => {
+      let code = $('inp-mp-code').value.trim().toUpperCase(), n = $('inp-mp-name').value.trim()||"Challenger";
+      if(!code) return sysNotify("請輸入房間密鑰");
+
+      $('arena-setup').style.display='none'; $('arena-wait').style.display='block';
+      $('ui-room-code').textContent = code;
+
+      if(code === window.tourCode) {
+          $('ui-host-name').textContent = n;
+          $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">等待管理員指示</div>`;
+          connectMqtt(code, 'CLIENT', () => {
+              sendMqtt({ type: 'TOUR_JOIN', p: {id: myId, n: n} });
+              sysNotify("成功加入賽事網路");
+          });
+      } else {
+          $('ui-host-name').textContent = n;
+          $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">點對點連線中...</div>`;
+          connectMqtt(code, 'CLIENT', () => {
+              sendMqtt({ type: 'P2P_JOIN', p: {id: myId, n: n} });
+              sysNotify("嘗試連線至對手...");
+          });
+      }
+  };
+
+  function handleMqttData(data) {
+      if (mqttRole === 'ADMIN') {
+          if (data.type === 'TOUR_JOIN') {
+              let added = false;
+              for(let i=0; i<trnData.length; i++) {
+                  if(trnData[i].isB) continue;
+                  if(trnData[i].p1.e && !trnData[i].p1.n){ trnData[i].p1 = {id: data.p.id, n: data.p.n, e:true}; added=true; break; }
+                  if(trnData[i].p2.e && !trnData[i].p2.n){ trnData[i].p2 = {id: data.p.id, n: data.p.n, e:true}; added=true; break; }
+              }
+              if(added) { renderBracketUI(); sysNotify(data.p.n + " 加入賽事"); }
+          }
+          if (data.type === 'ANSWER') processAnswer(data.pid, data.val);
+      }
+      else if (mqttRole === 'HOST') {
+          if (data.type === 'P2P_JOIN' && netState && netState.stat === 'wait') {
+              netState.g = {id: data.p.id, n: data.p.n, s: 0, a: false, v: null};
+              netState.stat = 'play';
+              sendMqtt({ type: 'MATCH_START', state: netState });
+              pushNetUpdate();
+          }
+          if (data.type === 'ANSWER') processAnswer(data.pid, data.val);
+      }
+      else if (mqttRole === 'CLIENT') {
+          if (['MATCH_START', 'MATCH_UPDATE', 'MATCH_END'].includes(data.type)) {
+              let state = data.state;
+              if (state.h.id === myId || state.g.id === myId) {
+                  netState = state;
+                  pushNetUpdate();
+              } else {
+                  if(state.stat === 'play') {
+                      $('arena-wait').style.display='block';
+                      $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">對局進行中<br><br>${state.h.n} vs ${state.g.n}</div>`;
+                  } else if (state.stat === 'fin') {
+                      $('box-guest').innerHTML=`<div style="color:var(--neon-green); font-size:14px; font-weight:700;" class="font-cyber">等待下一回合</div>`;
+                  }
+              }
+          }
+      }
+  }
+
+  function processAnswer(pid, val) {
+      if (!netState || netState.stat !== 'play') return;
+      let p = (netState.h.id === pid) ? netState.h : ((netState.g.id === pid) ? netState.g : null);
+      if (!p || p.a) return;
+
+      p.a = true; p.v = val;
+      if (val === netState.qs[netState.cIdx].ans) p.s += 100;
+
+      if (netState.h.a && netState.g.a) {
+          sendMqtt({ type: 'MATCH_UPDATE', state: netState });
+          setTimeout(() => {
+              netState.cIdx++;
+              if (netState.cIdx >= 10) {
+                  netState.stat = 'fin';
+                  sendMqtt({ type: 'MATCH_END', state: netState });
+                  if (mqttRole === 'ADMIN') finalizeTrnMatch();
+              } else {
+                  netState.h.a = false; netState.g.a = false;
+                  sendMqtt({ type: 'MATCH_START', state: netState });
+                  checkAiTurn();
+              }
+              if (mqttRole === 'HOST') pushNetUpdate();
+          }, 2000);
+      } else {
+          sendMqtt({ type: 'MATCH_UPDATE', state: netState });
+      }
+      if (mqttRole === 'HOST') pushNetUpdate();
+  }
+
+  function checkAiTurn() {
+      if (!netState || netState.stat !== 'play') return;
+      let isAiH = netState.h.id.startsWith('b_');
+      let isAiG = netState.g.id.startsWith('b_');
+      if (isAiH && !netState.h.a) setTimeout(() => { processAnswer(netState.h.id, Math.floor(Math.random()*3)); }, 1500 + Math.random()*2000);
+      if (isAiG && !netState.g.a) setTimeout(() => { processAnswer(netState.g.id, Math.floor(Math.random()*3)); }, 1500 + Math.random()*2000);
+  }
+
+  function pushNetUpdate(){
+      let d = netState; if(!d) return;
+      if(d.stat === 'play'){
+          $('arena-wait').style.display='none'; $('arena-combat').style.display='block';
+          $('arena-result').style.display='none';
+          $('ui-p1-name').textContent = d.h.n; $('ui-p1-score').textContent = d.h.s;
+          $('ui-p2-name').textContent = d.g.n; $('ui-p2-score').textContent = d.g.s;
+          $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 10 回合`;
+
+          let myP = (d.h.id === myId) ? d.h : (d.g.id === myId ? d.g : null);
+          let oppP = (d.h.id === myId) ? d.g : (d.g.id === myId ? d.h : null);
+          let q = d.qs[d.cIdx];
+
+          if(myP && !myP.a) {
+              $('ui-combat-q').innerHTML = q.text;
+              $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
+              $('ui-combat-status').textContent = "等待輸入指令..."; $('ui-combat-status').style.color = "var(--neon-cyan)";
+          }
+          if(myP && myP.a) {
+              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; });
+              let mB = $(`mp-opt-${myP.v}`); if(mB) mB.classList.add(myP.v===q.ans ? 'correct':'wrong');
+              if(oppP && oppP.a) {
+                  $('ui-combat-status').textContent = "處理下一回合資料..."; $('ui-combat-status').style.color = "var(--neon-yellow)";
+                  let cB = $(`mp-opt-${q.ans}`); if(cB) cB.classList.add('correct');
+              } else {
+                  $('ui-combat-status').textContent = "等待對手回應..."; $('ui-combat-status').style.color = "var(--neon-magenta)";
+              }
+          }
+      } else if (d.stat === 'fin') {
+          $('arena-combat').style.display='none'; $('arena-result').style.display='block';
+          $('ui-res-p1n').textContent = d.h.n; $('ui-res-p1s').textContent = d.h.s;
+          $('ui-res-p2n').textContent = d.g.n; $('ui-res-p2s').textContent = d.g.s;
+          let myScore = (d.h.id === myId) ? d.h.s : d.g.s;
+          let oppScore = (d.h.id === myId) ? d.g.s : d.h.s;
+
+          let t = $('ui-res-title');
+          if(myScore > oppScore){ t.textContent="勝利"; t.style.color="var(--neon-cyan)"; t.style.textShadow="0 0 20px rgba(0,240,255,0.5)";}
+          else if(myScore < oppScore){ t.textContent="落敗"; t.style.color="var(--neon-magenta)"; t.style.textShadow="0 0 20px rgba(255,0,85,0.5)";}
+          else { t.textContent="平局"; t.style.color="#fff"; t.style.textShadow="none";}
+      }
+  }
+
+  window.sendNetAns = (val) => {
+      if(!netState || netState.stat !== 'play') return;
+      let p = (netState.h.id === myId) ? netState.h : (netState.g.id === myId ? netState.g : null);
+      if(!p || p.a) return;
+
+      [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); // freeze click local
+
+      if (mqttRole === 'HOST') {
+          processAnswer(myId, val);
+      } else {
+          sendMqtt({ type: 'ANSWER', pid: myId, val: val });
+      }
+  };
+
+  // --- 4. 賽事控制台 (Tournament Bracket) ---
+  let trnData = [], trnSwap = { m:-1, k:'' }, trnRounds = [], trnSz = 16;
+  function nextPow2(n) { return n < 2 ? 2 : Math.pow(2, Math.ceil(Math.log2(n))); }
+  
+  window.genBracket = () => {
+      let N = parseInt($('inp-tour-size').value) || 8;
+      if(N<2 || N>32) return sysNotify('錯誤: 支援 2-32 人');
+      
+      // 更新房間密鑰邏輯：重新生成密鑰，確保不會重複
+      window.tourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+      $('ui-tour-code').textContent = window.tourCode;
+
+      trnSz = nextPow2(N); let totalM = trnSz - 1, r1M = trnSz / 2, byes = trnSz - N, realM = r1M - byes;
+      trnData = Array.from({length: totalM}, ()=>({ p1:{id:null, n:'', e:false}, p2:{id:null, n:'', e:false}, w:0, stat:'wait', isB:false }));
+      trnRounds = []; let sz = trnSz, sIdx = 0;
+      while(sz>1){ let m = sz/2; trnRounds.push([sIdx, sIdx+m]); sIdx+=m; sz/=2; }
+      
+      for(let i=0; i<r1M; i++){
+          if(i<realM){ trnData[i].p1.e=true; trnData[i].p2.e=true; }
+          else {
+              trnData[i].isB = true; trnData[i].stat = 'fin'; trnData[i].w = 1;
+              let nMIdx = r1M + Math.floor(i/2);
+              if(i%2===0) trnData[nMIdx].p1={id:null, n:'', e:true}; else trnData[nMIdx].p2={id:null, n:'', e:true};
+          }
+      }
+      trnSwap = {m:-1, k:''}; renderBracketUI(); setTimeout(drawBracketPaths, 50); sysNotify(`已建立 ${N} 人賽制排程，代碼已更新`);
+      
+      // 重新啟用管理者 MQTT 房間監聽
+      connectMqtt(window.tourCode, 'ADMIN', () => sysNotify("賽事伺服器已啟動"));
+  };
+
+  window.delTrnPlayer = (e, mI, pK) => { e.stopPropagation(); if(trnData[mI].stat!=='wait') return sysNotify('錯誤: 賽事已開始'); trnData[mI][pK].id=null; trnData[mI][pK].n=''; renderBracketUI(); };
+  
+  function renderBracketUI() {
+      const con = $('bracket-cols'); if(!con) return; con.innerHTML = '';
+      trnRounds.forEach((rnd, rI) => {
+          let col = document.createElement('div'); col.className = 'bracket-col';
+          for(let i=rnd[0]; i<rnd[1]; i++){
+              let m = trnData[i];
+              let box = document.createElement('div'); box.className = `match-card ${m.stat==='play'?'active':''}`; box.id = `mc-${i}`;
+              if(m.isB){ box.style.visibility='hidden'; col.appendChild(box); continue; }
+              box.innerHTML = `<div style="font-size:10px; color:var(--text-muted); position:absolute; top:3px; right:5px;" class="font-cyber">M${i+1}</div>`;
+              
+              ['p1','p2'].forEach(pK => {
+                  let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
+                  if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
+                  let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
+                  slt.innerHTML = `${m[pK].n||(m[pK].e?'等待中...':'未定...')} ${btn}`;
+                  slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
+              });
+              
+              if(m.stat==='play'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:var(--neon-yellow);font-weight:900;margin-top:5px;'; b.innerText='對決中'; box.appendChild(b); }
+              else if(m.stat==='fin'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:#555;font-weight:900;margin-top:5px;'; b.innerText='已結束'; box.appendChild(b); }
+              else if(m.p1.n && m.p2.n){ let b=document.createElement('button'); b.className='btn-cyber'; b.style='width:100%;font-size:11px;padding:5px;margin-top:8px;'; b.innerText='開始對戰'; b.onclick = ()=>runTrnMatch(i); box.appendChild(b); }
+              col.appendChild(box);
+          }
+          con.appendChild(col);
+      });
+      // Champion
+      let cCol = document.createElement('div'); cCol.className='bracket-col'; cCol.style.justifyContent='center';
+      let cBox = document.createElement('div'); cBox.className='match-card'; cBox.id='mc-champ'; cBox.style.borderColor='var(--neon-yellow)'; cBox.style.textAlign='center'; cBox.style.padding='20px'; cBox.style.background='rgba(255,230,0,0.1)';
+      cBox.innerHTML = `<div style="color:var(--neon-yellow);font-weight:900;margin-bottom:10px;font-size:14px;" class="font-cyber">[ 總冠軍 ]</div>`;
+      let finM = trnData[trnSz-2], cName='待定'; if(finM && finM.stat==='fin') cName = finM.w===1?finM.p1.n:finM.p2.n;
+      cBox.innerHTML += `<div style="font-size:20px;font-weight:900;color:white;" class="font-cyber">${cName}</div>`;
+      cCol.appendChild(cBox); con.appendChild(cCol);
+  }
+
+  function drawBracketPaths(){
+      const svg = $('bracket-svg'), con = $('bracket-cols'); if(!svg||!con) return;
+      svg.setAttribute('width', con.scrollWidth); svg.setAttribute('height', con.scrollHeight); svg.innerHTML = '';
+      const cRect = con.getBoundingClientRect();
+      for (let rI = 0; rI < trnRounds.length - 1; rI++) {
+          let cR = trnRounds[rI];
+          for (let i = cR[0]; i < cR[1]; i++) {
+              if (trnData[i].isB) continue;
+              let b1 = $(`mc-${i}`), b2 = $(`mc-${trnRounds[rI+1][0] + Math.floor((i - cR[0]) / 2)}`);
+              if (b1 && b2) {
+                  let r1 = b1.getBoundingClientRect(), r2 = b2.getBoundingClientRect();
+                  let sX = r1.right - cRect.left + con.scrollLeft, sY = r1.top + r1.height / 2 - cRect.top + con.scrollTop;
+                  let eX = r2.left - cRect.left + con.scrollLeft - 10, eY = r2.top + r2.height * ((i - cR[0]) % 2 === 0 ? 0.25 : 0.75) - cRect.top + con.scrollTop;
+                  let p = document.createElementNS("http://www.w3.org/2000/svg", "path"), mX = sX + (eX - sX) / 2;
+                  p.setAttribute('d', `M ${sX} ${sY} C ${mX} ${sY}, ${mX} ${eY}, ${eX} ${eY}`);
+                  p.setAttribute('stroke', 'var(--border-color)'); p.setAttribute('stroke-width', '2'); p.setAttribute('fill', 'transparent');
+                  svg.appendChild(p);
+              }
+          }
+      }
+      let fB = $(`mc-${trnSz - 2}`), cB = $(`mc-champ`);
+      if(fB && cB && fB.style.visibility !== 'hidden') {
+          let r1 = fB.getBoundingClientRect(), r2 = cB.getBoundingClientRect();
+          let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          p.setAttribute('d', `M ${r1.right - cRect.left + con.scrollLeft} ${r1.top + r1.height / 2 - cRect.top + con.scrollTop} L ${r2.left - cRect.left + con.scrollLeft} ${r2.top + r2.height / 2 - cRect.top + con.scrollTop}`);
+          p.setAttribute('stroke', 'var(--neon-yellow)'); p.setAttribute('stroke-width', '2'); p.setAttribute('fill', 'transparent'); p.setAttribute('stroke-dasharray', '4 4');
+          svg.appendChild(p);
+      }
+  }
+  window.addEventListener('resize', ()=>{ if($('view-admin').classList.contains('active')) drawBracketPaths(); });
+
+  function doTrnSwap(mI, pK) {
+      if(trnData[mI].stat !== 'wait') return sysNotify('錯誤: 僅能調度未啟動之槽位');
+      if(!trnData[mI][pK].e) return sysNotify('錯誤: 槽位鎖定');
+      if(trnSwap.m === -1) trnSwap = {m:mI, k:pK};
+      else {
+          let m1 = trnSwap.m, k1 = trnSwap.k;
+          if(m1===mI && k1===pK) trnSwap = {m:-1, k:''};
+          else {
+              let tI = trnData[m1][k1].id, tN = trnData[m1][k1].n;
+              trnData[m1][k1].id = trnData[mI][pK].id; trnData[m1][k1].n = trnData[mI][pK].n;
+              trnData[mI][pK].id = tI; trnData[mI][pK].n = tN;
+              trnSwap = {m:-1, k:''}; sysNotify('槽位調度完成');
+          }
+      }
+      renderBracketUI();
+  }
+
+  window.fillAIBots = () => {
+      let bNs = ['Faker','ShowMaker','Chovy','Caps','Rookie'], bI = 0;
+      for (let i = 0; i < trnData.length; i++) {
+          if (trnData[i].isB) continue;
+          if (trnData[i].p1.e && !trnData[i].p1.n) { trnData[i].p1.id = 'b_'+Math.random(); trnData[i].p1.n = bNs[bI++ % bNs.length]; }
+          if (trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = 'b_'+Math.random(); trnData[i].p2.n = bNs[bI++ % bNs.length]; }
+      }
+      renderBracketUI(); sysNotify('虛擬選手載入完畢');
+  };
+
+  function runTrnMatch(mI) {
+      if(mqttRole !== 'ADMIN') return;
+      let m = trnData[mI];
+      if(!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
+      
+      netState = {
+          rid: window.tourCode, matchId: mI, stat: 'play', cIdx: 0,
+          qs: Array.from({length:10}, getGeoTask),
+          h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null},
+          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null}
+      };
+      m.stat = 'play'; renderBracketUI();
+      sendMqtt({ type: 'MATCH_START', state: netState });
+      sysNotify(`M${mI+1} 對局開始`);
+      checkAiTurn();
+  }
+
+  function finalizeTrnMatch() {
+      let mI = netState.matchId;
+      let m = trnData[mI];
+      m.stat = 'fin';
+      m.w = (netState.h.s >= netState.g.s) ? 1 : 2;
+      let wO = m.w === 1 ? m.p1 : m.p2;
+
+      let cRI = trnRounds.findIndex(rnd => mI >= rnd[0] && mI < rnd[1]);
+      if(cRI !== -1 && cRI < trnRounds.length - 1) {
+          let off = mI - trnRounds[cRI][0], nMIdx = trnRounds[cRI + 1][0] + Math.floor(off / 2);
+          if (off % 2 === 0) trnData[nMIdx].p1 = {id: wO.id, n: wO.n, e: false};
+          else trnData[nMIdx].p2 = {id: wO.id, n: wO.n, e: false};
+      }
+      renderBracketUI(); drawBracketPaths(); sysNotify(`獲勝者: ${wO.n}`);
+  }
+</script>
+</body>
+</html>
