@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆｜戰術終端</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<!-- 引入 PeerJS (WebRTC P2P 連線引擎) -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 /* =========================================
    戰術終端機佈局 (Tactical Terminal OS)
@@ -141,7 +143,7 @@ body {
 .card-glass {
     background: var(--bg-surface); border: 1px solid var(--border-color);
     padding: 25px; backdrop-filter: blur(10px); position: relative;
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; height: 100%;
 }
 .card-glass::before { content:''; position:absolute; top:0; left:0; width:40px; height:2px; background:var(--neon-cyan); }
 
@@ -235,7 +237,7 @@ body {
             </div>
             <!-- 管理員登入按鈕 (所有裝置皆可見) -->
             <div class="nav-item" onclick="openAuth()" id="nav-login">
-                <span class="nav-icon">🔒</span><span>管理員登入</span>
+                <span class="nav-icon">🔒</span><span>系統登入</span>
             </div>
             <!-- 隱藏的賽事控制台 (登入後才會顯示) -->
             <div class="nav-item" style="display:none;" id="nav-admin" onclick="switchTab('admin')">
@@ -250,7 +252,7 @@ body {
         <header id="top-bar">
             <div style="display:flex; align-items:center; gap:15px;">
                 <button onclick="toggleSidebar()" class="btn-cyber" style="padding: 5px 12px; font-size: 16px; margin: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);">☰</button>
-                <div class="sys-status font-cyber" id="sys-top-status">連線初始化中...</div>
+                <div class="sys-status font-cyber" id="sys-top-status">伺服器連線中 // CONNECTING</div>
             </div>
         </header>
 
@@ -260,7 +262,7 @@ body {
             <div id="view-home" class="view-panel active">
                 <div class="dashboard-grid">
                     <div class="hero-card">
-                        <img src="image_7ceb3d.jpg" alt="Logo" class="hero-img">
+                        <img src="image_86d8e3.jpg" alt="Logo" class="hero-img">
                         <div class="hero-content">
                             <h2 class="font-cyber rgb-glow">導火線：切點引爆</h2>
                             <p>登入臨界戰術網路。引燃導火線、精準鎖定切點，在極速幾何演算中引爆對手，證明你才是戰線中唯一的王牌！</p>
@@ -271,14 +273,14 @@ body {
                     <div class="card-glass">
                         <div style="font-size:30px; color:var(--neon-cyan); margin-bottom:15px;">📐</div>
                         <h3 class="font-cyber" style="margin:0 0 10px; font-size:18px;">【訓練艙】交點模擬器</h3>
-                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">全方位360度旋轉雷射，實時觀測割線與切線的臨界變化。</p>
+                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px; flex:1;">全方位360度旋轉雷射，實時觀測割線與切線的臨界變化。</p>
                         <button class="btn-cyber" style="width:100%; font-size:13px; padding:10px;" onclick="switchTab('training')"><span>進入模擬</span></button>
                     </div>
                     
                     <div class="card-glass">
                         <div style="font-size:30px; color:var(--neon-magenta); margin-bottom:15px;">⚡</div>
                         <h3 class="font-cyber" style="margin:0 0 10px; font-size:18px;">【單人】60秒極限生存</h3>
-                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">高壓限時判斷！系統不斷拋出參數，唯有連續精準命中才能存活。</p>
+                        <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px; flex:1;">高壓限時判斷！系統不斷拋出參數，唯有連續精準命中才能存活。</p>
                         <button class="btn-cyber pink" style="width:100%; font-size:13px; padding:10px;" onclick="switchTab('speedrun')"><span>開始特訓</span></button>
                     </div>
                 </div>
@@ -362,7 +364,7 @@ body {
                         
                         <div style="text-align:center; position:relative; margin-bottom:30px;">
                             <hr style="border-color:#333; margin:0; position:absolute; top:50%; width:100%; z-index:1;">
-                            <span style="background:var(--bg-surface); padding:0 15px; position:relative; z-index:2; color:var(--text-muted); font-size:12px;" class="font-cyber">加入現有對局</span>
+                            <span style="background:var(--bg-surface); padding:0 15px; position:relative; z-index:2; color:var(--text-muted); font-size:12px;" class="font-cyber">加入老師的賽事</span>
                         </div>
                         
                         <div style="display:flex; gap:10px;">
@@ -389,7 +391,7 @@ body {
                         </div>
                         <div style="text-align:center;" id="box-guest">
                             <div style="width:60px; height:60px; border:2px dashed #555; margin:0 auto 10px; display:grid; place-items:center; transform:rotate(45deg); animation:pulse 2s infinite;"><span style="transform:rotate(-45deg); font-weight:900; color:#555;">?</span></div>
-                            <div style="font-weight:900; color:#555;" class="font-cyber">尋找對手中</div>
+                            <div style="font-weight:900; color:#555;" class="font-cyber">等待伺服器回應</div>
                         </div>
                     </div>
                 </div>
@@ -474,7 +476,7 @@ body {
 
 <div id="auth-overlay" class="modal-overlay">
     <div class="modal-box">
-        <h3 style="color:var(--neon-magenta); font-size:20px; margin:0 0 20px; font-style:italic;" class="font-cyber">管理員權限覆寫</h3>
+        <h3 style="color:var(--neon-magenta); font-size:20px; margin:0 0 20px; font-style:italic;" class="font-cyber">系統管理員覆寫</h3>
         <input type="password" id="inp-admin-pwd" class="cyber-input font-cyber" style="text-align:center; font-size:24px; letter-spacing:8px; margin-bottom:25px;" onkeypress="if(event.key==='Enter') verifyAdmin()">
         <div style="display:flex; gap:15px;">
             <button class="btn-cyber" style="flex:1;" onclick="closeAuth()"><span>取消</span></button>
@@ -483,59 +485,6 @@ body {
     </div>
 </div>
 
-<!-- =========================================
-     全新的 Firebase 雲端伺服器連線引擎
-     ========================================= -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // 暴露給全域環境使用
-    window.FB = {
-        initializeApp, getAuth, signInAnonymously, signInWithCustomToken,
-        getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot
-    };
-
-    window.appId = typeof __app_id !== 'undefined' ? __app_id : 'tactical-terminal';
-    window.fbEnabled = false;
-    window.db = null;
-
-    // 初始化 Firebase (穿透防火牆的關鍵)
-    window.initFB = async () => {
-        if (window.fbEnabled) return true;
-        if (typeof __firebase_config === 'undefined') {
-            console.warn("無法取得 Firebase 環境變數，將於單機模式運行");
-            return false;
-        }
-        try {
-            const config = JSON.parse(__firebase_config);
-            const app = window.FB.initializeApp(config);
-            window.db = window.FB.getFirestore(app);
-            const auth = window.FB.getAuth(app);
-            
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await window.FB.signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await window.FB.signInAnonymously(auth);
-            }
-            window.fbEnabled = true;
-            document.getElementById('sys-top-status').textContent = '伺服器連線中 // FIREBASE ONLINE';
-            return true;
-        } catch (e) {
-            console.error("連線錯誤:", e);
-            document.getElementById('sys-top-status').textContent = '無法連接伺服器 // OFFLINE';
-            return false;
-        }
-    };
-
-    // 網頁載入時自動嘗試初始化連線
-    window.initFB();
-</script>
-
-<!-- =========================================
-     遊戲邏輯與介面互動 (整合 Firebase)
-     ========================================= -->
 <script>
   const $ = id => document.getElementById(id);
   const sysNotify = (msg) => {
@@ -545,7 +494,6 @@ body {
   };
 
   let globalTimer = null;
-  let myId = Math.random().toString(36).substring(2,6).toUpperCase();
   
   // 側邊欄收合功能
   window.toggleSidebar = () => {
@@ -712,96 +660,299 @@ body {
       $('qz-next-btn').disabled = false; $('qz-next-btn').onclick = startLocalQuiz;
   }
 
-
   // =========================================
-  // 3. 雙層即時連線 (Firebase Firestore 核心)
+  // 3. WebRTC P2P (PeerJS) 雙層即時連線引擎
   // =========================================
-  let netState = null;
-  let adminTourCode = null;
-  window.currentRoomCode = null;
-
+  
+  let myPeer = null;           // 自己的 PeerJS 實例
+  let myConn = null;           // 學生連接到老師的 Connection
+  let clientConns = {};        // 老師持有的所有學生 Connections
+  let myId = Math.random().toString(36).substring(2,6).toUpperCase(); // 預設ID
+  let myRole = 'student';      // 'admin' 或 'student'
+  
+  let netState = null;         // 戰鬥狀態
+  let adminTourCode = null;    // 老師的房號
+  
+  // 系統頂部狀態列
+  $('sys-top-status').textContent = 'P2P 網路就緒 // READY';
+  
   function resetArena(){
       $('arena-setup').style.display='block'; $('arena-wait').style.display='none';
       $('arena-combat').style.display='none'; $('arena-result').style.display='none';
       netState = null;
-      if(window.unsubClient) { window.unsubClient(); window.unsubClient = null; }
-      window.currentRoomCode = null;
+      if(myPeer && myRole === 'student') { myPeer.destroy(); myPeer = null; }
+      myConn = null;
   }
 
-  // (學生) 第一層連線：輸入房號進入大廳
-  window.joinMatch = async () => {
+  // --- (老師端) 生成全新賽事與開啟主機 ---
+  let trnData = [], trnSwap = { m:-1, k:'' }, trnRounds = [], trnSz = 16;
+  function nextPow2(n) { return n < 2 ? 2 : Math.pow(2, Math.ceil(Math.log2(n))); }
+  
+  window.genBracket = () => {
+      let N = parseInt($('inp-tour-size').value) || 8;
+      if(N<2 || N>32) return sysNotify('錯誤: 支援 2-32 人');
+      
+      // 1. 產生新的房間密鑰
+      adminTourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+      $('ui-tour-code').textContent = adminTourCode;
+      
+      // 2. 初始化排程表 UI 資料
+      trnSz = nextPow2(N); let totalM = trnSz - 1, r1M = trnSz / 2, byes = trnSz - N, realM = r1M - byes;
+      trnData = Array.from({length: totalM}, ()=>({ p1:{id:null, n:'', e:false}, p2:{id:null, n:'', e:false}, w:0, stat:'wait', isB:false }));
+      trnRounds = []; let sz = trnSz, sIdx = 0;
+      while(sz>1){ let m = sz/2; trnRounds.push([sIdx, sIdx+m]); sIdx+=m; sz/=2; }
+      
+      for(let i=0; i<r1M; i++){
+          if(i<realM){ trnData[i].p1.e=true; trnData[i].p2.e=true; }
+          else {
+              trnData[i].isB = true; trnData[i].stat = 'fin'; trnData[i].w = 1;
+              let nMIdx = r1M + Math.floor(i/2);
+              if(i%2===0) trnData[nMIdx].p1={id:null, n:'', e:true}; else trnData[nMIdx].p2={id:null, n:'', e:true};
+          }
+      }
+      trnSwap = {m:-1, k:''}; 
+      netState = null; // 重置戰鬥狀態
+      renderBracketUI(); 
+      setTimeout(drawBracketPaths, 50);
+
+      // 3. 啟動 PeerJS 成為主機 (Host)
+      if(myPeer) myPeer.destroy();
+      clientConns = {}; 
+      myRole = 'admin';
+      
+      // 建立指定 ID 的主機節點，加上字首避免重複
+      myPeer = new Peer('TacTerm_Host_' + adminTourCode);
+      
+      myPeer.on('open', (id) => {
+          sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
+      });
+      
+      // 當有學生連線進來時
+      myPeer.on('connection', (conn) => {
+          conn.on('data', (data) => handleStudentMessage(conn, data));
+          conn.on('close', () => { delete clientConns[conn.peer]; });
+      });
+      
+      myPeer.on('error', (err) => {
+          sysNotify("伺服器建立失敗: " + err.type);
+      });
+  };
+
+  // --- (老師端) 處理來自學生的訊息 ---
+  function handleStudentMessage(conn, msg) {
+      if (msg.type === 'JOIN') {
+          // 學生請求加入
+          clientConns[msg.id] = conn; // 儲存連線
+          
+          let added = false;
+          for(let i=0; i<trnData.length; i++) {
+              if(trnData[i].isB) continue;
+              if(trnData[i].p1.e && !trnData[i].p1.n) { trnData[i].p1.id = msg.id; trnData[i].p1.n = msg.name; added=true; break; }
+              if(trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = msg.id; trnData[i].p2.n = msg.name; added=true; break; }
+          }
+          if(added) sysNotify(`特務 ${msg.name} 已加入排程`);
+          
+          renderBracketUI();
+          broadcastSync(); // 廣播最新賽程給所有人
+          
+      } else if (msg.type === 'ANSWER') {
+          // 學生送出答案
+          if (!netState || netState.stat !== 'play') return;
+          
+          let pKey = (netState.h.id === msg.id) ? 'h' : (netState.g.id === msg.id ? 'g' : null);
+          if (pKey && !netState[pKey].a) {
+              netState[pKey].a = true;
+              netState[pKey].v = msg.val;
+              checkAdminMatchNext();
+          }
+      }
+  }
+
+  // --- (老師端) 廣播賽程與比賽狀態給所有連線的學生 ---
+  function broadcastSync() {
+      if (myRole !== 'admin') return;
+      let payload = { type: 'SYNC', bracket: trnData, activeMatch: netState };
+      Object.values(clientConns).forEach(conn => {
+          if (conn.open) conn.send(payload);
+      });
+      
+      // 同時也要檢查 AI 是否需要作答
+      if (netState && netState.stat === 'play') {
+          checkAdminAiTurnAndNext();
+      }
+  }
+
+  // --- (老師端) 點擊開始某場對戰，把學生強制拉入戰場 ---
+  window.runTrnMatch = (mI) => {
+      let m = trnData[mI];
+      if(!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
+      
+      netState = {
+          matchId: mI, stat: 'play', cIdx: 0,
+          qs: Array.from({length:10}, getGeoTask), // 生成10題
+          h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, aiQueued: false},
+          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, aiQueued: false}
+      };
+      
+      m.stat = 'play';
+      renderBracketUI();
+      sysNotify(`M${mI+1} 對局開始，已將參賽者拉入戰場`);
+      
+      // 廣播給學生，學生的畫面會瞬間切換
+      broadcastSync();
+  };
+
+  // --- (老師端) 判定雙方作答與下一回合 ---
+  function checkAdminMatchNext() {
+      let m = netState;
+      if (!m || m.stat !== 'play') return;
+      
+      // 如果雙方都已經作答
+      if (m.h.a && m.g.a) {
+          if (!window.adminProcessingMatch) {
+              window.adminProcessingMatch = true;
+              
+              // 計算分數
+              if (m.h.v === m.qs[m.cIdx].ans) m.h.s += 100;
+              if (m.g.v === m.qs[m.cIdx].ans) m.g.s += 100;
+              
+              broadcastSync(); // 先廣播一次，讓學生看到對方答案的對錯
+              
+              // 停頓 2 秒再切換下一題
+              setTimeout(() => {
+                  m.cIdx++;
+                  if (m.cIdx >= 10) {
+                      // 10 題結束，結算勝負
+                      m.stat = 'fin';
+                      let bMatch = trnData[m.matchId];
+                      bMatch.stat = 'fin';
+                      // 平手則隨機決定勝負
+                      if (m.h.s === m.g.s) m.h.s += (Math.random()>0.5 ? 1 : -1);
+                      bMatch.w = (m.h.s > m.g.s) ? 1 : 2; 
+                      
+                      let wO = bMatch.w === 1 ? bMatch.p1 : bMatch.p2;
+                      sysNotify(`獲勝晉級者: ${wO.n}`);
+                      
+                      // 晉級邏輯
+                      let cRI = trnRounds.findIndex(rnd => m.matchId >= rnd[0] && m.matchId < rnd[1]);
+                      if(cRI !== -1 && cRI < trnRounds.length - 1) {
+                          let off = m.matchId - trnRounds[cRI][0], nMIdx = trnRounds[cRI + 1][0] + Math.floor(off / 2);
+                          if (off % 2 === 0) trnData[nMIdx].p1 = {id: wO.id, n: wO.n, e: false};
+                          else trnData[nMIdx].p2 = {id: wO.id, n: wO.n, e: false};
+                      }
+                      renderBracketUI();
+                  } else {
+                      // 重置狀態進入下一題
+                      m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
+                  }
+                  broadcastSync(); // 廣播下一題或結束畫面
+                  window.adminProcessingMatch = false;
+              }, 2000);
+          }
+      } else {
+          broadcastSync(); // 單方作答也廣播狀態
+      }
+  }
+
+  // --- (老師端) 自動幫 AI 虛擬對手作答 ---
+  function checkAdminAiTurnAndNext() {
+      let m = netState;
+      if (!m || m.stat !== 'play') return;
+      
+      let isAiH = m.h.id.startsWith('b_');
+      let isAiG = m.g.id.startsWith('b_');
+      
+      if (isAiH && !m.h.a && !m.h.aiQueued) {
+          m.h.aiQueued = true;
+          setTimeout(() => {
+              if (netState && netState.cIdx === m.cIdx) {
+                  netState.h.a = true; netState.h.v = Math.floor(Math.random()*3);
+                  checkAdminMatchNext();
+              }
+          }, 1500 + Math.random()*2000);
+      }
+      
+      if (isAiG && !m.g.a && !m.g.aiQueued) {
+          m.g.aiQueued = true;
+          setTimeout(() => {
+              if (netState && netState.cIdx === m.cIdx) {
+                  netState.g.a = true; netState.g.v = Math.floor(Math.random()*3);
+                  checkAdminMatchNext();
+              }
+          }, 1500 + Math.random()*2000);
+      }
+  }
+
+  // --- (學生端) 輸入房號連線 ---
+  window.joinMatch = () => {
       let code = $('inp-mp-code').value.trim().toUpperCase();
       let n = $('inp-mp-name').value.trim() || "Challenger";
       if(!code) return sysNotify("請輸入連線密鑰");
 
-      if (!window.fbEnabled) {
-          let ok = await window.initFB();
-          if (!ok) return sysNotify("連線失敗：防火牆阻擋或環境未備妥");
-      }
-
       $('arena-setup').style.display='none'; $('arena-wait').style.display='block';
       $('ui-room-code').textContent = code; $('ui-host-name').textContent = n;
-      $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接全球伺服器中...</div>`;
+      $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接老師的主機中...</div>`;
 
-      try {
-          const roomRef = window.FB.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'rooms', code);
-          const rDoc = await window.FB.getDoc(roomRef);
+      if(myPeer) myPeer.destroy();
+      
+      myRole = 'student';
+      // 學生端使用自動隨機的 Peer ID
+      myPeer = new Peer();
+      
+      myPeer.on('open', (id) => {
+          // 連線到老師的指定 Peer ID
+          myConn = myPeer.connect('TacTerm_Host_' + code);
           
-          if (!rDoc.exists()) {
+          myConn.on('open', () => {
+              // 成功連上老師，發送加入請求，並附上自己原本產生的 P2P 內部 ID
+              myConn.send({ type: 'JOIN', name: n, id: myId });
+              $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連線，請求加入排程...</div>`;
+          });
+          
+          myConn.on('data', (data) => handleHostMessage(data));
+          
+          myConn.on('error', (err) => {
               resetArena();
-              return sysNotify("找不到該賽事密鑰");
-          }
-          
-          window.currentRoomCode = code;
-          
-          // 將自己寫入加入請求名單
-          let reqs = rDoc.data().joinReqs || [];
-          reqs.push({id: myId, n: n});
-          await window.FB.updateDoc(roomRef, { joinReqs: reqs });
-
-          // 啟動第二層：即時監聽該房間的所有變化
-          if (window.unsubClient) window.unsubClient();
-          window.unsubClient = window.FB.onSnapshot(roomRef, (snap) => {
-              if(snap.exists()) processClientSync(snap.data(), roomRef);
-          }, (err) => { sysNotify("連線中斷: " + err.message); });
-          
-      } catch(e) {
-          resetArena();
-          sysNotify("伺服器連線發生錯誤");
-      }
+              sysNotify("無法連接該賽事主機");
+          });
+      });
   };
 
-  // (學生) 處理雲端同步的畫面切換
-  function processClientSync(data, roomRef) {
-      // 1. 檢查自己是否已經被老師排入賽程
-      let inBracket = false;
-      if (data.bracket) {
-          data.bracket.forEach(m => {
-              if (m.p1 && m.p1.id === myId) inBracket = true;
-              if (m.p2 && m.p2.id === myId) inBracket = true;
-          });
-      }
-
-      // 2. 檢查目前「正在進行的比賽 (activeMatch)」是不是我的局
-      let am = data.activeMatch;
-      let isMyMatch = am && (am.h.id === myId || am.g.id === myId);
-
-      if (isMyMatch) {
-          // 被老師點名開戰，瞬間切換到戰鬥畫面！
-          netState = am;
-          pushNetUpdate(); 
-      } else if (inBracket) {
-          // 在等候室
-          $('arena-setup').style.display='none'; $('arena-combat').style.display='none'; $('arena-result').style.display='none';
-          $('arena-wait').style.display='block';
-          $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連線至老師端<br><br>等待安排賽程與正式開賽...</div>`;
-      } else {
-          // 還沒被老師收編
-          $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">請求加入中，等待管理員確認...</div>`;
+  // --- (學生端) 處理來自老師的廣播 ---
+  function handleHostMessage(msg) {
+      if (msg.type === 'SYNC') {
+          let bData = msg.bracket;
+          let am = msg.activeMatch;
+          
+          // 1. 檢查自己是否在賽程表中
+          let inBracket = false;
+          if (bData) {
+              bData.forEach(m => {
+                  if (m.p1 && m.p1.id === myId) inBracket = true;
+                  if (m.p2 && m.p2.id === myId) inBracket = true;
+              });
+          }
+          
+          // 2. 檢查現在「正在進行的比賽」是不是我
+          let isMyMatch = am && (am.h.id === myId || am.g.id === myId);
+          
+          if (isMyMatch) {
+              // 被點名開戰，切換到戰鬥畫面！
+              netState = am;
+              pushNetUpdate();
+          } else if (inBracket) {
+              // 在等候室
+              $('arena-setup').style.display='none'; $('arena-combat').style.display='none'; $('arena-result').style.display='none';
+              $('arena-wait').style.display='block';
+              $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功排入賽程<br><br>等待管理員點名開賽...</div>`;
+          } else {
+              // 還沒被收編 (或是已經被淘汰)
+              $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">觀戰模式 // 等待中...</div>`;
+          }
       }
   }
 
-  // (學生) 戰鬥畫面同步更新
+  // --- (學生端) 戰鬥畫面同步更新 ---
   function pushNetUpdate() {
       let d = netState; if(!d) return;
       if(d.stat === 'play'){
@@ -848,7 +999,6 @@ body {
           else if(myScore < oppScore){ t.textContent="落敗"; t.style.color="var(--neon-magenta)"; t.style.textShadow="0 0 20px rgba(255,0,85,0.5)";}
           else { t.textContent="平手"; t.style.color="#fff"; t.style.textShadow="none";}
           
-          // 學生點擊返回後回到等候室，等待下一輪賽事
           let btnRet = $('btn-return-lobby');
           btnRet.innerHTML = "<span>返回 // 大廳等待晉級</span>";
           btnRet.onclick = () => {
@@ -859,211 +1009,31 @@ body {
       }
   }
 
-  // (學生) 傳送答案到雲端
-  window.sendNetAns = async (val) => {
+  // --- (學生端) 傳送答案給老師 ---
+  window.sendNetAns = (val) => {
       if(!netState || netState.stat !== 'play') return;
       let pKey = (netState.h.id === myId) ? 'h' : (netState.g.id === myId ? 'g' : null);
       if(!pKey || netState[pKey].a) return;
 
       [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); // freeze UI
       
-      try {
-          const roomRef = window.FB.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'rooms', window.currentRoomCode);
-          let updates = {};
-          updates[`activeMatch.${pKey}.a`] = true;
-          updates[`activeMatch.${pKey}.v`] = val;
-          await window.FB.updateDoc(roomRef, updates);
-      } catch (e) {
-          sysNotify("傳送資料失敗，請檢查網路");
-      }
-  };
-
-  // =========================================
-  // 4. 賽事控制台 (Tournament Bracket)
-  // =========================================
-  let trnData = [], trnSwap = { m:-1, k:'' }, trnRounds = [], trnSz = 16;
-  function nextPow2(n) { return n < 2 ? 2 : Math.pow(2, Math.ceil(Math.log2(n))); }
-  
-  // (老師) 生成全新賽事與專屬房間
-  window.genBracket = async () => {
-      let N = parseInt($('inp-tour-size').value) || 8;
-      if(N<2 || N>32) return sysNotify('錯誤: 支援 2-32 人');
-      
-      if (!window.fbEnabled) {
-          let ok = await window.initFB();
-          if (!ok) return sysNotify("連線失敗：防火牆阻擋或環境未備妥");
-      }
-
-      // 生成全新的房間密鑰
-      adminTourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-      $('ui-tour-code').textContent = adminTourCode;
-      
-      trnSz = nextPow2(N); let totalM = trnSz - 1, r1M = trnSz / 2, byes = trnSz - N, realM = r1M - byes;
-      trnData = Array.from({length: totalM}, ()=>({ p1:{id:null, n:'', e:false}, p2:{id:null, n:'', e:false}, w:0, stat:'wait', isB:false }));
-      trnRounds = []; let sz = trnSz, sIdx = 0;
-      while(sz>1){ let m = sz/2; trnRounds.push([sIdx, sIdx+m]); sIdx+=m; sz/=2; }
-      
-      for(let i=0; i<r1M; i++){
-          if(i<realM){ trnData[i].p1.e=true; trnData[i].p2.e=true; }
-          else {
-              trnData[i].isB = true; trnData[i].stat = 'fin'; trnData[i].w = 1;
-              let nMIdx = r1M + Math.floor(i/2);
-              if(i%2===0) trnData[nMIdx].p1={id:null, n:'', e:true}; else trnData[nMIdx].p2={id:null, n:'', e:true};
-          }
-      }
-      trnSwap = {m:-1, k:''}; 
-      renderBracketUI(); 
-      setTimeout(drawBracketPaths, 50);
-
-      // 上傳空房間到雲端
-      try {
-          const roomRef = window.FB.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'rooms', adminTourCode);
-          await window.FB.setDoc(roomRef, {
-              bracket: trnData,
-              joinReqs: [],
-              activeMatch: null
-          });
-
-          // 老師持續監聽該房間，當有學生加入或作答時處理
-          if (window.unsubAdmin) window.unsubAdmin();
-          window.unsubAdmin = window.FB.onSnapshot(roomRef, (snap) => {
-              if(snap.exists()) processAdminSync(snap.data(), roomRef);
-          });
-          sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
-      } catch (e) {
-          sysNotify("伺服器連線建立失敗: " + e.message);
-      }
-  };
-
-  // (老師) 處理伺服器的同步資料
-  async function processAdminSync(data, roomRef) {
-      let needUpdate = false;
-      let updatePayload = {};
-
-      // 1. 處理新學生的加入請求
-      if (data.joinReqs && data.joinReqs.length > 0) {
-          let bData = data.bracket;
-          data.joinReqs.forEach(req => {
-              let added = false;
-              for(let i=0; i<bData.length; i++) {
-                  if(bData[i].isB) continue;
-                  if(bData[i].p1.e && !bData[i].p1.n) { bData[i].p1.id = req.id; bData[i].p1.n = req.n; added=true; break; }
-                  if(bData[i].p2.e && !bData[i].p2.n) { bData[i].p2.id = req.id; bData[i].p2.n = req.n; added=true; break; }
-              }
-              if(added) sysNotify(`特務 ${req.n} 已加入排程`);
-          });
-          updatePayload.bracket = bData;
-          updatePayload.joinReqs = []; // 清空請求佇列
-          needUpdate = true;
-          trnData = bData;
-          renderBracketUI();
-      }
-
-      // 2. 處理戰鬥中的計分與回合轉換
-      if (data.activeMatch && data.activeMatch.stat === 'play') {
-          let m = data.activeMatch;
+      // 透過 P2P 發送給主機
+      if (myConn && myConn.open) {
+          myConn.send({ type: 'ANSWER', id: myId, val: val });
           
-          // 如果雙方都已經作答
-          if (m.h.a && m.g.a) {
-              if (!window.adminProcessingMatch) {
-                  window.adminProcessingMatch = true;
-                  
-                  // 計算分數
-                  if (m.h.v === m.qs[m.cIdx].ans) m.h.s += 100;
-                  if (m.g.v === m.qs[m.cIdx].ans) m.g.s += 100;
-                  
-                  // 給學生看兩秒的對錯動畫，再跳下一題
-                  setTimeout(async () => {
-                      m.cIdx++;
-                      // 十題結束
-                      if (m.cIdx >= 10) {
-                          m.stat = 'fin';
-                          let bData = data.bracket || trnData;
-                          let bMatch = bData[m.matchId];
-                          bMatch.stat = 'fin';
-                          bMatch.w = (m.h.s >= m.g.s) ? 1 : 2; // 決定勝負
-                          let wO = bMatch.w === 1 ? bMatch.p1 : bMatch.p2;
-                          sysNotify(`獲勝晉級者: ${wO.n}`);
-                          
-                          // 晉級邏輯
-                          let cRI = trnRounds.findIndex(rnd => m.matchId >= rnd[0] && m.matchId < rnd[1]);
-                          if(cRI !== -1 && cRI < trnRounds.length - 1) {
-                              let off = m.matchId - trnRounds[cRI][0], nMIdx = trnRounds[cRI + 1][0] + Math.floor(off / 2);
-                              if (off % 2 === 0) bData[nMIdx].p1 = {id: wO.id, n: wO.n, e: false};
-                              else bData[nMIdx].p2 = {id: wO.id, n: wO.n, e: false};
-                          }
-                          updatePayload.bracket = bData;
-                          trnData = bData;
-                          renderBracketUI();
-                      } else {
-                          m.h.a = false; m.g.a = false;
-                      }
-                      await window.FB.updateDoc(roomRef, { activeMatch: m, ...updatePayload });
-                      window.adminProcessingMatch = false;
-                  }, 2000);
-              }
-          } else {
-               // 若有一方是 AI 電腦，由老師端代為運算作答
-               checkAdminAiTurn(m, roomRef);
-          }
-      }
-      
-      if (needUpdate) {
-          await window.FB.updateDoc(roomRef, updatePayload);
+          // 本地搶先預先顯示 UI
+          netState[pKey].a = true; netState[pKey].v = val;
+          pushNetUpdate();
       } else {
-          trnData = data.bracket || trnData;
-          renderBracketUI();
-      }
-  }
-
-  // (老師) 自動幫電腦 (AI) 隨機作答
-  async function checkAdminAiTurn(m, roomRef) {
-      if (m.stat !== 'play') return;
-      let isAiH = m.h.id.startsWith('b_');
-      let isAiG = m.g.id.startsWith('b_');
-      
-      if (isAiH && !m.h.a && !m.h.aiQueued) {
-          m.h.aiQueued = true;
-          await window.FB.updateDoc(roomRef, { 'activeMatch.h.aiQueued': true });
-          setTimeout(async () => {
-              await window.FB.updateDoc(roomRef, { 'activeMatch.h.a': true, 'activeMatch.h.v': Math.floor(Math.random()*3) });
-          }, 1500 + Math.random()*2000);
-      }
-      
-      if (isAiG && !m.g.a && !m.g.aiQueued) {
-          m.g.aiQueued = true;
-          await window.FB.updateDoc(roomRef, { 'activeMatch.g.aiQueued': true });
-          setTimeout(async () => {
-              await window.FB.updateDoc(roomRef, { 'activeMatch.g.a': true, 'activeMatch.g.v': Math.floor(Math.random()*3) });
-          }, 1500 + Math.random()*2000);
-      }
-  }
-
-  // (老師) 點擊開始某場對戰，把學生強制拉入戰場
-  window.runTrnMatch = async (mI) => {
-      let m = trnData[mI];
-      if(!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
-      
-      let newMatch = {
-          matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length:10}, getGeoTask),
-          h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null},
-          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null}
-      };
-      
-      try {
-          const roomRef = window.FB.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'rooms', adminTourCode);
-          await window.FB.updateDoc(roomRef, { activeMatch: newMatch });
-          
-          m.stat = 'play';
-          renderBracketUI();
-          sysNotify(`M${mI+1} 對局開始，已將參賽者拉入戰場`);
-      } catch (e) {
-          sysNotify("開賽失敗，請檢查網路連線");
+          sysNotify("網路斷線，無法傳送答案");
       }
   };
 
-  // --- UI 渲染功能 ---
+
+  // =========================================
+  // 4. UI 渲染功能 (賽事樹狀圖)
+  // =========================================
+  
   window.delTrnPlayer = (e, mI, pK) => { e.stopPropagation(); if(trnData[mI].stat!=='wait') return sysNotify('錯誤: 賽事已開始'); trnData[mI][pK].id=null; trnData[mI][pK].n=''; renderBracketUI(); };
   
   function renderBracketUI() {
@@ -1147,6 +1117,7 @@ body {
           }
       }
       renderBracketUI();
+      broadcastSync(); // 位置調換也廣播
   }
 
   window.fillAIBots = () => {
@@ -1156,12 +1127,8 @@ body {
           if (trnData[i].p1.e && !trnData[i].p1.n) { trnData[i].p1.id = 'b_'+Math.random(); trnData[i].p1.n = bNs[bI++ % bNs.length]; }
           if (trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = 'b_'+Math.random(); trnData[i].p2.n = bNs[bI++ % bNs.length]; }
       }
-      // 將排好的電腦上傳給伺服器，直接觸發 processAdminSync 更新房間
-      if (adminTourCode) {
-          window.FB.updateDoc(window.FB.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'rooms', adminTourCode), { bracket: trnData });
-      } else {
-          renderBracketUI(); 
-      }
+      renderBracketUI(); 
+      broadcastSync(); // 更新 AI 名單廣播
       sysNotify('虛擬選手載入完畢');
   };
 </script>
