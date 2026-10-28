@@ -667,7 +667,7 @@ body {
   let myPeer = null;           // 自己的 PeerJS 實例
   let myConn = null;           // 學生連接到老師的 Connection
   let clientConns = {};        // 老師持有的所有學生 Connections
-  let myId = Math.random().toString(36).substring(2,6).toUpperCase(); // 預設ID
+  let myId = "";               // 預設ID改為空字串，將使用伺服器核發的真實ID
   let myRole = 'student';      // 'admin' 或 'student'
   
   let netState = null;         // 戰鬥狀態
@@ -728,31 +728,43 @@ body {
       renderBracketUI(); 
       setTimeout(drawBracketPaths, 50);
 
-      // 3. 啟動 PeerJS 成為主機 (Host) - 加入 STUN 設定
-      if(myPeer) myPeer.destroy();
+      // 3. 啟動 PeerJS 成為主機 (Host) - 徹底清理前一次通道
+      if(myPeer) {
+          myPeer.destroy();
+      }
       clientConns = {}; 
       myRole = 'admin';
       
-      myPeer = new Peer('TacTerm_Host_' + adminTourCode, peerConfig);
-      
-      myPeer.on('open', (id) => {
-          sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
-      });
-      
-      // 當有學生連線進來時
-      myPeer.on('connection', (conn) => {
-          // 確保連線完全開啟後才開始監聽資料
-          conn.on('open', () => {
-              conn.on('data', (data) => handleStudentMessage(conn, data));
+      // 給予一點延遲，確保舊連線已完全銷毀再重新建立
+      setTimeout(() => {
+          myPeer = new Peer('TacTerm_Host_' + adminTourCode, peerConfig);
+          
+          myPeer.on('open', (id) => {
+              sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
           });
-          conn.on('close', () => { delete clientConns[conn.peer]; });
-          conn.on('error', (err) => { console.error("學生連線異常:", err); });
-      });
-      
-      myPeer.on('error', (err) => {
-          sysNotify("伺服器建立失敗，請確認網路或重新生成");
-          console.error("PeerJS Host Error:", err);
-      });
+          
+          // 當有學生連線進來時
+          myPeer.on('connection', (conn) => {
+              conn.on('open', () => {
+                  conn.on('data', (data) => handleStudentMessage(conn, data));
+              });
+              conn.on('close', () => { delete clientConns[conn.peer]; });
+              conn.on('error', (err) => { console.error("學生連線異常:", err); });
+          });
+          
+          // 【穩定性機制】如果伺服器將老師幽靈斷線，系統自動重新連接
+          myPeer.on('disconnected', () => {
+              console.log("主機與信令伺服器斷開，嘗試重連...");
+              if (!myPeer.destroyed) {
+                  myPeer.reconnect();
+              }
+          });
+          
+          myPeer.on('error', (err) => {
+              sysNotify("伺服器建立失敗，請確認網路或重新生成");
+              console.error("PeerJS Host Error:", err);
+          });
+      }, 500);
   };
 
   // --- (老師端) 處理來自學生的訊息 ---
@@ -910,48 +922,65 @@ body {
       $('ui-room-code').textContent = code; $('ui-host-name').textContent = n;
       $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接老師的主機中...</div>`;
 
-      if(myPeer) myPeer.destroy();
+      // 徹底清理前一次可能失敗的連線通道
+      if (myPeer) {
+          myPeer.destroy();
+      }
       
       myRole = 'student';
       
-      // 使用 peerConfig 進行穿透
-      myPeer = new Peer(peerConfig);
-      
-      myPeer.on('open', (id) => {
-          myId = id; // 使用 PeerJS 實際核發的 ID，避免幽靈連線
+      // 給予延遲確保銷毀完畢後再發起新連線
+      setTimeout(() => {
+          myPeer = new Peer(peerConfig);
           
-          // 加入 reliable: true 提高 WebRTC 資料傳輸穩定度
-          myConn = myPeer.connect('TacTerm_Host_' + code, { reliable: true });
-          
-          myConn.on('open', () => {
-              // 成功連上老師，發送加入請求
-              myConn.send({ type: 'JOIN', name: n, id: myId });
-              $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連線，請求加入排程...</div>`;
+          myPeer.on('open', (id) => {
+              myId = id; // 使用 PeerJS 真實核發的 ID
+              
+              // reliable: true 保障指令封包不會遺失
+              myConn = myPeer.connect('TacTerm_Host_' + code, { reliable: true });
+              
+              myConn.on('open', () => {
+                  myConn.send({ type: 'JOIN', name: n, id: myId });
+                  $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連線，請求加入排程...</div>`;
+              });
+              
+              myConn.on('data', (data) => handleHostMessage(data));
+              
+              myConn.on('close', () => {
+                  sysNotify("與伺服器斷開連線");
+                  resetArena();
+              });
           });
           
-          myConn.on('data', (data) => handleHostMessage(data));
+          // 【穩定性機制】如果伺服器將學生幽靈斷線，系統自動重新連接
+          myPeer.on('disconnected', () => {
+              console.log("學生與信令伺服器斷開，嘗試重連...");
+              if (!myPeer.destroyed) {
+                  myPeer.reconnect();
+              }
+          });
           
-          // 明確捕捉「找不到房號(老師)」的錯誤，並退回上一頁
-          myConn.on('close', () => {
-              sysNotify("與伺服器斷開連線");
+          myPeer.on('error', (err) => {
+              console.error("PeerJS Client Error:", err);
               resetArena();
+              if (err.type === 'peer-unavailable') {
+                  sysNotify("找不到該密鑰的賽事，請確認代碼是否正確");
+              } else {
+                  sysNotify("連線失敗，請檢查網路防火牆限制");
+              }
           });
-      });
-      
-      // 捕捉所有 Peer 網路層級的錯誤
-      myPeer.on('error', (err) => {
-          console.error("PeerJS Client Error:", err);
-          resetArena();
-          if (err.type === 'peer-unavailable') {
-              sysNotify("找不到該密鑰的賽事，請確認代碼是否正確");
-          } else {
-              sysNotify("連線失敗，請檢查網路防火牆限制");
-          }
-      });
+      }, 500);
   };
 
   // --- (學生端) 處理來自老師的廣播 ---
   function handleHostMessage(msg) {
+      // 處理被老師踢除的訊號
+      if (msg.type === 'KICKED') {
+          sysNotify("你已被管理員移出賽事！");
+          resetArena();
+          return;
+      }
+      
       if (msg.type === 'SYNC') {
           let bData = msg.bracket;
           let am = msg.activeMatch;
@@ -1066,7 +1095,31 @@ body {
   // 4. UI 渲染功能 (賽事樹狀圖)
   // =========================================
   
-  window.delTrnPlayer = (e, mI, pK) => { e.stopPropagation(); if(trnData[mI].stat!=='wait') return sysNotify('錯誤: 賽事已開始'); trnData[mI][pK].id=null; trnData[mI][pK].n=''; renderBracketUI(); };
+  // (老師端) 踢除選手功能，並通知學生端
+  window.delTrnPlayer = (e, mI, pK) => { 
+      e.stopPropagation(); 
+      if(trnData[mI].stat !== 'wait') return sysNotify('錯誤: 賽事已開始'); 
+      
+      let studentId = trnData[mI][pK].id;
+      
+      // 發送踢除訊號給特定學生
+      if(studentId && clientConns[studentId]) {
+          if (clientConns[studentId].open) {
+              clientConns[studentId].send({ type: 'KICKED' });
+          }
+          // 稍微延遲後清理連線
+          setTimeout(() => {
+              if(clientConns[studentId]) clientConns[studentId].close();
+              delete clientConns[studentId];
+          }, 500);
+      }
+      
+      trnData[mI][pK].id = null; 
+      trnData[mI][pK].n = ''; 
+      renderBracketUI(); 
+      broadcastSync(); // 重要：通知全場名單變動
+      sysNotify('已將選手移出槽位');
+  };
   
   function renderBracketUI() {
       const con = $('bracket-cols'); if(!con) return; con.innerHTML = '';
