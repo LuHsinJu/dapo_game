@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆｜戰術終端</title>
+<title>導火線：切點引爆</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-<!-- 引入 PeerJS (WebRTC P2P 連線引擎) -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!-- 引入 Firebase (使用 v8 compat 版本以求最簡易的單檔整合) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
 /* =========================================
    戰術終端機佈局 (Tactical Terminal OS)
@@ -150,15 +151,13 @@ body {
 /* =========================================
    各頁面特殊樣式
    ========================================= */
-/* 首頁大廳 */
 .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; }
 .hero-card { grid-column: 1 / -1; background: linear-gradient(135deg, rgba(0,240,255,0.1), rgba(0,0,0,0.8)); border: 1px solid var(--border-color); padding: 40px; border-left: 5px solid var(--neon-cyan); display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
-.hero-img { flex-shrink: 0; width: 180px; height: 180px; border-radius: 12px; border: 3px solid var(--neon-magenta); box-shadow: 0 0 25px rgba(255,0,85,0.4); object-fit: cover; }
+.hero-img { flex-shrink: 0; width: 180px; height: 180px; border-radius: 12px; border: 3px solid var(--neon-magenta); box-shadow: 0 0 25px rgba(255,0,85,0.4); object-fit: cover; background: #222; }
 .hero-content { flex: 1; min-width: 280px; }
 .hero-content h2 { font-size: clamp(32px, 5vw, 48px); margin:0 0 15px; font-style:italic; }
 .hero-content p { font-size: 16px; color: var(--text-muted); line-height: 1.6; max-width: 600px; margin-bottom: 30px; }
 
-/* 訓練場 */
 .training-layout { display: flex; gap: 30px; flex-wrap: wrap;}
 .canvas-box { flex: 1; min-width: 300px; background: #000; border: 1px solid #333; position: relative; display: flex; justify-content: center; overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); }
 .control-box { width: 350px; display: flex; flex-direction: column; gap: 20px; }
@@ -166,7 +165,6 @@ body {
 .slider-group input[type=range] { width: 100%; accent-color: var(--neon-cyan); height: 4px; background: #333; outline: none; appearance: none; cursor: pointer; margin-bottom: 15px;}
 .slider-group input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: var(--neon-cyan); transform: rotate(45deg); cursor: pointer; }
 
-/* 答題系統 */
 .quiz-box { max-width: 800px; margin: 0 auto; }
 .q-text { font-size: 24px; font-weight: 700; line-height: 1.6; text-align: center; padding: 50px 30px; background: rgba(0,0,0,0.4); border: 1px solid #333; margin-bottom: 30px; border-top: 3px solid var(--neon-cyan); }
 .opt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
@@ -175,7 +173,6 @@ body {
 .opt-btn.correct { background: rgba(0,255,102,0.2) !important; color: var(--neon-green); border-color: var(--neon-green); }
 .opt-btn.wrong { background: rgba(255,0,85,0.2) !important; color: var(--neon-magenta); border-color: var(--neon-magenta); }
 
-/* 賽程表 */
 .bracket-scroll { overflow-x: auto; padding: 20px 0 40px; min-height: 400px; display: flex; position: relative; }
 .bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 30px; min-width: 220px; padding: 0 30px; position: relative; z-index: 10; }
 .match-card { background: var(--bg-surface); border: 1px solid #333; padding: 10px; position: relative; border-left: 3px solid var(--neon-cyan); }
@@ -188,12 +185,10 @@ body {
 .del-btn { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: var(--neon-magenta); font-size: 16px; cursor: pointer; opacity: 0; transition: 0.2s; border:none; background:transparent;}
 .p-slot:hover .del-btn { opacity: 1; }
 
-/* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 999; display: none; place-items: center; }
 .modal-overlay.show { display: grid; }
 .modal-box { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 40px; width: 90%; max-width: 400px; border-top: 4px solid var(--neon-magenta); text-align: center;}
 
-/* RWD: 手機版 */
 @media (max-width: 768px) {
     #terminal-app { flex-direction: column-reverse; }
     #sidebar { width: 100%; height: 70px; flex-direction: row; border-right: none; border-top: 1px solid var(--border-color); }
@@ -203,7 +198,6 @@ body {
     .nav-item { flex: 1; justify-content: center; flex-direction: column; gap: 5px; padding: 10px 5px; font-size: 11px; border-left: none; border-bottom: 3px solid transparent;}
     .nav-item.active { border-left: none; border-bottom-color: var(--neon-cyan); background: linear-gradient(0deg, rgba(0,240,255,0.1), transparent); }
     .nav-icon { font-size: 20px; }
-    
     .dashboard-grid { grid-template-columns: 1fr; }
     .opt-grid { grid-template-columns: 1fr; }
     .hero-card { justify-content: center; text-align: center; }
@@ -214,7 +208,6 @@ body {
 
 <div id="terminal-app">
     
-    <!-- 左側導覽列 (Side Nav) -->
     <aside id="sidebar">
         <div class="brand-area">
             <div class="brand-text font-cyber">
@@ -235,20 +228,16 @@ body {
             <div class="nav-item" onclick="switchTab('arena')">
                 <span class="nav-icon">⚔️</span><span>排位賽</span>
             </div>
-            <!-- 管理員登入按鈕 (所有裝置皆可見) -->
             <div class="nav-item" onclick="openAuth()" id="nav-login">
                 <span class="nav-icon">🔒</span><span>系統登入</span>
             </div>
-            <!-- 隱藏的賽事控制台 (登入後才會顯示) -->
             <div class="nav-item" style="display:none;" id="nav-admin" onclick="switchTab('admin')">
                 <span class="nav-icon">🛡️</span><span>賽事控制台</span>
             </div>
         </nav>
     </aside>
 
-    <!-- 主工作區 (Main Content) -->
     <main id="main-workspace">
-        
         <header id="top-bar">
             <div style="display:flex; align-items:center; gap:15px;">
                 <button onclick="toggleSidebar()" class="btn-cyber" style="padding: 5px 12px; font-size: 16px; margin: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);">☰</button>
@@ -257,12 +246,11 @@ body {
         </header>
 
         <div id="view-container">
-            
-            <!-- 1. 首頁 (Home Dashboard) -->
+            <!-- 首頁 -->
             <div id="view-home" class="view-panel active">
                 <div class="dashboard-grid">
                     <div class="hero-card">
-                        <img src="image_86d8e3.jpg" alt="Logo" class="hero-img" onerror="this.src='https://via.placeholder.com/180x180/11141d/00f0ff?text=LOGO'">
+                        <img src="image_86d8e3.jpg" alt="Logo" class="hero-img" onerror="this.src='https://placehold.co/180x180/11141d/00f0ff?text=LOGO'">
                         <div class="hero-content">
                             <h2 class="font-cyber rgb-glow">導火線：切點引爆</h2>
                             <p>登入臨界戰術網路。引燃導火線、精準鎖定切點，在極速幾何演算中引爆對手，證明你才是戰線中唯一的王牌！</p>
@@ -286,13 +274,12 @@ body {
                 </div>
             </div>
 
-            <!-- 2. 交點模擬器 (Training) -->
+            <!-- 交點模擬 -->
             <div id="view-training" class="view-panel">
                 <div class="section-header">
                     <h2 class="font-cyber">【訓練艙】交點模擬</h2>
                     <p class="font-cyber">觀測平台</p>
                 </div>
-                
                 <div class="training-layout">
                     <div class="canvas-box">
                         <svg id="radarSvg" viewBox="0 0 440 330" style="width:100%; height:100%; cursor: crosshair;" 
@@ -303,19 +290,15 @@ body {
                           <g id="radarDynamic"></g>
                         </svg>
                     </div>
-                    
                     <div class="control-box">
                         <div class="card-glass slider-group">
                             <label><span>核心半徑 (r)</span><span id="val-radius" style="color:var(--neon-green)">95</span></label>
                             <input id="slider-radius" type="range" min="10" max="150" value="95" oninput="syncRadar()">
-                            
                             <label style="margin-top:20px;"><span>雷射距離 (d)</span><span id="val-dist" style="color:var(--neon-yellow)">75</span></label>
                             <input id="slider-dist" type="range" min="-200" max="200" value="75" oninput="syncRadar()">
-                            
                             <label style="margin-top:20px;"><span>發射角度 (θ)</span><span id="val-angle" style="color:var(--neon-cyan)">0°</span></label>
                             <input id="slider-angle" type="range" min="0" max="360" value="0" oninput="syncRadar()">
                         </div>
-                        
                         <div class="card-glass" style="border-left: 4px solid var(--neon-cyan);">
                             <div style="font-size:12px; color:var(--neon-cyan); font-weight:700; margin-bottom:10px;" class="font-cyber">[ 系統判定結果 ]</div>
                             <div id="radar-result" style="font-size:22px; font-weight:900; margin-bottom:8px; font-style:italic;">割線 // 2 交點</div>
@@ -326,7 +309,7 @@ body {
                 </div>
             </div>
 
-            <!-- 3. 單人極限生存 (Speedrun) -->
+            <!-- 單人生存 -->
             <div id="view-speedrun" class="view-panel">
                 <div class="quiz-box">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;" class="font-cyber">
@@ -336,12 +319,9 @@ body {
                     <div style="height:6px; background:#222; margin-bottom:40px; position:relative;">
                         <div id="qz-bar" style="height:100%; background:var(--neon-cyan); width:0%; transition: 0.3s; box-shadow:0 0 10px var(--neon-cyan);"></div>
                     </div>
-                    
                     <div id="qz-text" class="q-text">點擊下方按鈕啟動特訓。</div>
                     <div id="qz-options" class="opt-grid"></div>
-                    
                     <div id="qz-feedback" style="margin-top:30px; padding:20px; border:1px solid #333; background:rgba(0,0,0,0.5); display:none; line-height:1.6; font-size:15px; font-weight:700;"></div>
-                    
                     <div style="display:flex; justify-content:space-between; margin-top:30px; align-items:center;">
                         <span id="qz-combo" style="color:var(--neon-yellow); font-weight:900; font-size:18px; font-style:italic;" class="font-cyber">連擊 x0</span>
                         <button id="qz-next-btn" class="btn-cyber pink" onclick="startLocalQuiz()" style="padding:15px 40px;"><span>啟動 // 開始特訓</span></button>
@@ -349,11 +329,11 @@ body {
                 </div>
             </div>
 
-            <!-- 4. 排位競技場 (Arena) -->
+            <!-- 排位競技場 -->
             <div id="view-arena" class="view-panel">
                  <div class="section-header" style="text-align:center;">
                     <h2 class="font-cyber rgb-glow">【排位賽】即時同步對決</h2>
-                    <p class="font-cyber">多人連線戰鬥網路</p>
+                    <p class="font-cyber">多人連線戰鬥網路 (Firebase 即時核心)</p>
                 </div>
                 
                 <!-- Setup -->
@@ -391,7 +371,7 @@ body {
                         </div>
                         <div style="text-align:center;" id="box-guest">
                             <div style="width:60px; height:60px; border:2px dashed #555; margin:0 auto 10px; display:grid; place-items:center; transform:rotate(45deg); animation:pulse 2s infinite;"><span style="transform:rotate(-45deg); font-weight:900; color:#555;">?</span></div>
-                            <div style="font-weight:900; color:#555;" class="font-cyber">等待伺服器回應</div>
+                            <div style="font-weight:900; color:#555;" class="font-cyber">等待資料庫回應</div>
                         </div>
                     </div>
                 </div>
@@ -412,7 +392,6 @@ body {
                             <div id="ui-p2-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
                         </div>
                     </div>
-                    
                     <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
                     <div id="ui-combat-opts" class="opt-grid"></div>
                     <div id="ui-combat-status" style="text-align:center; margin-top:30px; font-weight:900; color:var(--neon-cyan); letter-spacing:2px;" class="font-cyber">等待輸入指令...</div>
@@ -422,7 +401,6 @@ body {
                 <div id="arena-result" class="hidden" style="text-align:center; max-width:600px; margin:40px auto; padding:50px; background:rgba(0,0,0,0.5); border-top:5px solid var(--neon-yellow);">
                     <div style="font-size:14px; color:var(--text-muted); font-weight:900; letter-spacing:4px; margin-bottom:20px;" class="font-cyber">戰鬥結算</div>
                     <h3 id="ui-res-title" style="font-size:48px; color:var(--neon-yellow); margin-bottom:40px; font-style:italic; text-shadow:0 0 20px rgba(255,230,0,0.5);" class="font-cyber">勝利</h3>
-                    
                     <div style="display:flex; justify-content:space-around; margin-bottom:50px; align-items:center;">
                         <div>
                             <div id="ui-res-p1n" style="color:var(--neon-cyan); font-weight:900; margin-bottom:10px;" class="font-cyber">P1</div>
@@ -438,7 +416,7 @@ body {
                 </div>
             </div>
 
-            <!-- 5. 賽事控制台 (Admin Bracket) -->
+            <!-- 控制台 -->
             <div id="view-admin" class="view-panel">
                 <div class="section-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div>
@@ -459,19 +437,18 @@ body {
                     </div>
                     <button class="btn-cyber pink" style="padding:10px 20px; font-size:12px;" onclick="fillAIBots()"><span>自動填入虛擬對手</span></button>
                 </div>
-                <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 學生使用上方專屬密鑰加入排位賽。點擊任兩位選手交換位置。懸停點擊 ✖ 刪除。遇到種子選手 (輪空) 點擊開始將直接晉級。</p>
+                <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 學生使用上方專屬密鑰加入。懸停點擊 ✖ 可剔除學生。點擊開始將直接晉級或對戰。</p>
                 
                 <div class="bracket-scroll">
                     <svg id="bracket-svg" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(0,240,255,0.4));"></svg>
                     <div id="bracket-cols" style="display: flex; gap: 50px; position: relative; z-index: 10;"></div>
                 </div>
             </div>
-
         </div>
     </main>
 </div>
 
-<!-- Modal / Toast -->
+<!-- Modal -->
 <div id="sys-toast" style="position:fixed; bottom:30px; left:50%; transform:translate(-50%,20px); background:var(--neon-cyan); color:#000; padding:15px 30px; font-weight:900; letter-spacing:2px; font-size:14px; opacity:0; transition:0.3s; pointer-events:none; z-index:9999; box-shadow:0 5px 20px rgba(0,240,255,0.5);" class="font-cyber">系統訊息</div>
 
 <div id="auth-overlay" class="modal-overlay">
@@ -490,7 +467,7 @@ body {
   const sysNotify = (msg) => {
       let el = $('sys-toast'); el.textContent = msg;
       el.style.opacity = '1'; el.style.transform = 'translate(-50%,0)';
-      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%,20px)'; }, 2500);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translate(-50%,20px)'; }, 3000);
   };
 
   let globalTimer = null;
@@ -498,9 +475,7 @@ body {
   // 側邊欄收合功能
   window.toggleSidebar = () => {
       $('sidebar').classList.toggle('collapsed');
-      if($('view-admin').classList.contains('active')) {
-          setTimeout(drawBracketPaths, 350); 
-      }
+      if($('view-admin').classList.contains('active')) setTimeout(drawBracketPaths, 350); 
   };
 
   // 導覽切換
@@ -522,20 +497,17 @@ body {
       }
   };
 
-  // 管理員權限
   window.openAuth = () => { $('auth-overlay').classList.add('show'); $('inp-admin-pwd').value=''; $('inp-admin-pwd').focus(); };
   window.closeAuth = () => { $('auth-overlay').classList.remove('show'); };
   window.verifyAdmin = () => {
       if($('inp-admin-pwd').value === '1234'){ 
           closeAuth(); 
-          $('nav-login').style.display = 'none';
-          $('nav-admin').style.display = 'flex';
+          $('nav-login').style.display = 'none'; $('nav-admin').style.display = 'flex';
           switchTab('admin'); 
-      }
-      else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
+      } else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
   };
 
-  // --- 題庫引擎 (系統即時生成幾何題目) ---
+  // --- 題庫引擎 ---
   function getGeoTask(){
       let r = 3 + Math.floor(Math.random()*8); 
       let type = Math.random(), d, ans, explain;
@@ -549,15 +521,10 @@ body {
   // --- 1. 交點模擬 (Training) ---
   let isDraggingRadar = false;
   window.syncRadar = () => {
-      const r = parseInt($('slider-radius').value) || 95;
-      const d = parseInt($('slider-dist').value) || 0;
-      const absD = Math.abs(d);
-      const angle = parseInt($('slider-angle').value) || 0;
-      const rad = angle * Math.PI / 180;
-      const cx = 220, cy = 165;
-      const vx = Math.cos(rad), vy = Math.sin(rad), nx = -Math.sin(rad), ny = Math.cos(rad);
-      const px = cx + d * nx, py = cy - d * ny; 
-      const lineLen = 300;
+      const r = parseInt($('slider-radius').value) || 95, d = parseInt($('slider-dist').value) || 0, absD = Math.abs(d);
+      const angle = parseInt($('slider-angle').value) || 0, rad = angle * Math.PI / 180;
+      const cx = 220, cy = 165, vx = Math.cos(rad), vy = Math.sin(rad), nx = -Math.sin(rad), ny = Math.cos(rad);
+      const px = cx + d * nx, py = cy - d * ny, lineLen = 300;
       
       let g = `<line x1="${px - lineLen * vx}" y1="${py + lineLen * vy}" x2="${px + lineLen * vx}" y2="${py - lineLen * vy}" stroke="var(--neon-magenta)" stroke-width="3" style="filter: drop-shadow(0 0 8px var(--neon-magenta));" />
                <line x1="${cx}" y1="${cy}" x2="${px}" y2="${py}" stroke="var(--neon-yellow)" stroke-width="2" stroke-dasharray="4 4" />`;
@@ -660,56 +627,64 @@ body {
       $('qz-next-btn').disabled = false; $('qz-next-btn').onclick = startLocalQuiz;
   }
 
-  // =========================================
-  // 3. WebRTC P2P (PeerJS) 雙層即時連線引擎
-  // =========================================
+  // ==============================================================
+  // 3. Firebase 雲端資料庫 P2P 同步引擎 (完美穿透、保證穩定)
+  // ==============================================================
   
-  let myPeer = null;           // 自己的 PeerJS 實例
-  let myConn = null;           // 學生連接到老師的 Connection
-  let clientConns = {};        // 老師持有的所有學生 Connections
-  let myId = "";               // 預設ID改為空字串，將使用伺服器核發的真實ID
-  let myRole = 'student';      // 'admin' 或 'student'
-  
-  let netState = null;         // 戰鬥狀態
-  let adminTourCode = null;    // 老師的房號
-
-  // === 新增：WebRTC 穿透防火牆設定 (使用 Google 免費 STUN 伺服器) ===
-  const peerConfig = {
-      config: {
-          'iceServers': [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' }
-          ]
-      },
-      debug: 1 // 1: Error, 2: Warning
+  // ⚠️⚠️⚠️【必填區域】請將這裡替換為你的 Firebase 專案設定 ⚠️⚠️⚠️
+  const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
   };
-  // =========================================================
+
+  // 初始化 Firebase
+  if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.database();
+
+  let myId = ""; 
+  let myRole = 'student';
+  let netState = null;
+  let adminTourCode = null;
   
-  // 系統頂部狀態列
-  $('sys-top-status').textContent = 'P2P 網路就緒 // READY';
+  // 檢查是否已設定好 Firebase 金鑰
+  function checkFirebaseReady() {
+      if(firebaseConfig.apiKey === "YOUR_API_KEY") {
+          alert("【系統警告】\n\n請先開啟原始碼 (約第394行)，填入你專屬的 Firebase 金鑰設定，否則無法啟動連線功能！");
+          return false;
+      }
+      return true;
+  }
+
+  $('sys-top-status').textContent = '資料庫連線就緒 // FIREBASE READY';
   
   function resetArena(){
       $('arena-setup').style.display='block'; $('arena-wait').style.display='none';
       $('arena-combat').style.display='none'; $('arena-result').style.display='none';
       netState = null;
-      if(myPeer && myRole === 'student') { myPeer.destroy(); myPeer = null; }
-      myConn = null;
+      // 停止監聽
+      if(window.roomListenerUnsubscribe) { window.roomListenerUnsubscribe(); window.roomListenerUnsubscribe = null; }
   }
 
-  // --- (老師端) 生成全新賽事與開啟主機 ---
+  // --- (老師端) 生成全新賽事 ---
   let trnData = [], trnSwap = { m:-1, k:'' }, trnRounds = [], trnSz = 16;
   function nextPow2(n) { return n < 2 ? 2 : Math.pow(2, Math.ceil(Math.log2(n))); }
   
   window.genBracket = () => {
+      if(!checkFirebaseReady()) return;
+
       let N = parseInt($('inp-tour-size').value) || 8;
       if(N<2 || N>32) return sysNotify('錯誤: 支援 2-32 人');
       
-      // 1. 產生新的房間密鑰
       adminTourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
       $('ui-tour-code').textContent = adminTourCode;
       
-      // 2. 初始化排程表 UI 資料
       trnSz = nextPow2(N); let totalM = trnSz - 1, r1M = trnSz / 2, byes = trnSz - N, realM = r1M - byes;
       trnData = Array.from({length: totalM}, ()=>({ p1:{id:null, n:'', e:false}, p2:{id:null, n:'', e:false}, w:0, stat:'wait', isB:false }));
       trnRounds = []; let sz = trnSz, sIdx = 0;
@@ -724,68 +699,46 @@ body {
           }
       }
       trnSwap = {m:-1, k:''}; 
-      netState = null; // 重置戰鬥狀態
+      netState = null; 
       renderBracketUI(); 
-      setTimeout(drawBracketPaths, 50);
 
-      // 3. 啟動 PeerJS 成為主機 (Host) - 徹底清理前一次通道
-      if(myPeer) {
-          myPeer.destroy();
-      }
-      clientConns = {}; 
       myRole = 'admin';
       
-      // 給予一點延遲，確保舊連線已完全銷毀再重新建立
-      setTimeout(() => {
-          myPeer = new Peer('TacTerm_Host_' + adminTourCode, peerConfig);
-          
-          myPeer.on('open', (id) => {
-              sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
-          });
-          
-          // 當有學生連線進來時
-          myPeer.on('connection', (conn) => {
-              conn.on('open', () => {
-                  conn.on('data', (data) => handleStudentMessage(conn, data));
-              });
-              conn.on('close', () => { delete clientConns[conn.peer]; });
-              conn.on('error', (err) => { console.error("學生連線異常:", err); });
-          });
-          
-          // 【穩定性機制】如果伺服器將老師幽靈斷線，系統自動重新連接
-          myPeer.on('disconnected', () => {
-              console.log("主機與信令伺服器斷開，嘗試重連...");
-              if (!myPeer.destroyed) {
-                  myPeer.reconnect();
-              }
-          });
-          
-          myPeer.on('error', (err) => {
-              sysNotify("伺服器建立失敗，請確認網路或重新生成");
-              console.error("PeerJS Host Error:", err);
-          });
-      }, 500);
-  };
+      // 【寫入 Firebase 建立賽事房間】
+      const roomRef = db.ref('tacterm_rooms/' + adminTourCode);
+      roomRef.set({
+          bracket: trnData,
+          activeMatch: null,
+          kicked: { dummy: true } // 預設防止 null 錯誤
+      }).then(() => {
+          sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
+      });
 
-  // --- (老師端) 處理來自學生的訊息 ---
-  function handleStudentMessage(conn, msg) {
-      if (msg.type === 'JOIN') {
-          // 學生請求加入
-          clientConns[msg.id] = conn; // 儲存連線
-          
+      // 清除先前的監聽
+      if(window.adminJoinListener) db.ref('tacterm_rooms').off('child_added', window.adminJoinListener);
+      if(window.adminAnsListener) db.ref('tacterm_rooms').off('child_added', window.adminAnsListener);
+      
+      // 【老師監聽】當有學生丟出加入請求
+      window.adminJoinListener = roomRef.child('joinRequests').on('child_added', (snap) => {
+          let pId = snap.key;
+          let pName = snap.val();
           let added = false;
           for(let i=0; i<trnData.length; i++) {
               if(trnData[i].isB) continue;
-              if(trnData[i].p1.e && !trnData[i].p1.n) { trnData[i].p1.id = msg.id; trnData[i].p1.n = msg.name; added=true; break; }
-              if(trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = msg.id; trnData[i].p2.n = msg.name; added=true; break; }
+              if(trnData[i].p1.e && !trnData[i].p1.n) { trnData[i].p1.id = pId; trnData[i].p1.n = pName; added=true; break; }
+              if(trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = pId; trnData[i].p2.n = pName; added=true; break; }
           }
-          if(added) sysNotify(`特務 ${msg.name} 已加入排程`);
-          
-          renderBracketUI();
-          broadcastSync(); // 廣播最新賽程給所有人
-          
-      } else if (msg.type === 'ANSWER') {
-          // 學生送出答案
+          if(added) {
+              sysNotify(`特務 ${pName} 已加入排程`);
+              renderBracketUI();
+              broadcastSync(); // 同步回 Firebase
+          }
+          snap.ref.remove(); // 讀取完即刪除請求，保持 DB 乾淨
+      });
+
+      // 【老師監聽】當有學生作答
+      window.adminAnsListener = roomRef.child('answers').on('child_added', (snap) => {
+          let msg = { id: snap.key, val: snap.val() };
           if (!netState || netState.stat !== 'play') return;
           
           let pKey = (netState.h.id === msg.id) ? 'h' : (netState.g.id === msg.id ? 'g' : null);
@@ -794,75 +747,55 @@ body {
               netState[pKey].v = msg.val;
               checkAdminMatchNext();
           }
-      }
-  }
+          snap.ref.remove(); 
+      });
+  };
 
-  // --- (老師端) 廣播賽程與比賽狀態給所有連線的學生 ---
+  // --- (老師端) 廣播最新狀態至 Firebase ---
   function broadcastSync() {
-      if (myRole !== 'admin') return;
-      let payload = { type: 'SYNC', bracket: trnData, activeMatch: netState };
-      Object.values(clientConns).forEach(conn => {
-          if (conn.open) conn.send(payload);
+      if (myRole !== 'admin' || !adminTourCode) return;
+      
+      // 更新資料庫，所有學生會自動觸發 on('value') 收到新資料
+      db.ref('tacterm_rooms/' + adminTourCode).update({
+          bracket: trnData,
+          activeMatch: netState || null
       });
       
-      // 同時也要檢查 AI 是否需要作答
-      if (netState && netState.stat === 'play') {
-          checkAdminAiTurnAndNext();
-      }
+      if (netState && netState.stat === 'play') checkAdminAiTurnAndNext();
   }
 
-  // --- (老師端) 點擊開始某場對戰，把學生強制拉入戰場 ---
   window.runTrnMatch = (mI) => {
       let m = trnData[mI];
       if(!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
-      
       netState = {
           matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length:10}, getGeoTask), // 生成10題
+          qs: Array.from({length:10}, getGeoTask),
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, aiQueued: false},
           g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, aiQueued: false}
       };
-      
       m.stat = 'play';
       renderBracketUI();
-      sysNotify(`M${mI+1} 對局開始，已將參賽者拉入戰場`);
-      
-      // 廣播給學生，學生的畫面會瞬間切換
+      sysNotify(`M${mI+1} 對局開始`);
       broadcastSync();
   };
 
-  // --- (老師端) 判定雙方作答與下一回合 ---
   function checkAdminMatchNext() {
-      let m = netState;
-      if (!m || m.stat !== 'play') return;
-      
-      // 如果雙方都已經作答
+      let m = netState; if (!m || m.stat !== 'play') return;
       if (m.h.a && m.g.a) {
           if (!window.adminProcessingMatch) {
               window.adminProcessingMatch = true;
-              
-              // 計算分數
               if (m.h.v === m.qs[m.cIdx].ans) m.h.s += 100;
               if (m.g.v === m.qs[m.cIdx].ans) m.g.s += 100;
+              broadcastSync(); 
               
-              broadcastSync(); // 先廣播一次，讓學生看到對方答案的對錯
-              
-              // 停頓 2 秒再切換下一題
               setTimeout(() => {
                   m.cIdx++;
                   if (m.cIdx >= 10) {
-                      // 10 題結束，結算勝負
-                      m.stat = 'fin';
-                      let bMatch = trnData[m.matchId];
-                      bMatch.stat = 'fin';
-                      // 平手則隨機決定勝負
+                      m.stat = 'fin'; let bMatch = trnData[m.matchId]; bMatch.stat = 'fin';
                       if (m.h.s === m.g.s) m.h.s += (Math.random()>0.5 ? 1 : -1);
                       bMatch.w = (m.h.s > m.g.s) ? 1 : 2; 
-                      
                       let wO = bMatch.w === 1 ? bMatch.p1 : bMatch.p2;
                       sysNotify(`獲勝晉級者: ${wO.n}`);
-                      
-                      // 晉級邏輯
                       let cRI = trnRounds.findIndex(rnd => m.matchId >= rnd[0] && m.matchId < rnd[1]);
                       if(cRI !== -1 && cRI < trnRounds.length - 1) {
                           let off = m.matchId - trnRounds[cRI][0], nMIdx = trnRounds[cRI + 1][0] + Math.floor(off / 2);
@@ -871,149 +804,115 @@ body {
                       }
                       renderBracketUI();
                   } else {
-                      // 重置狀態進入下一題
                       m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
                   }
-                  broadcastSync(); // 廣播下一題或結束畫面
+                  broadcastSync();
                   window.adminProcessingMatch = false;
               }, 2000);
           }
-      } else {
-          broadcastSync(); // 單方作答也廣播狀態
-      }
+      } else { broadcastSync(); }
   }
 
-  // --- (老師端) 自動幫 AI 虛擬對手作答 ---
   function checkAdminAiTurnAndNext() {
-      let m = netState;
-      if (!m || m.stat !== 'play') return;
-      
-      let isAiH = m.h.id.startsWith('b_');
-      let isAiG = m.g.id.startsWith('b_');
-      
+      let m = netState; if (!m || m.stat !== 'play') return;
+      let isAiH = m.h.id.startsWith('b_'), isAiG = m.g.id.startsWith('b_');
       if (isAiH && !m.h.a && !m.h.aiQueued) {
           m.h.aiQueued = true;
-          setTimeout(() => {
-              if (netState && netState.cIdx === m.cIdx) {
-                  netState.h.a = true; netState.h.v = Math.floor(Math.random()*3);
-                  checkAdminMatchNext();
-              }
-          }, 1500 + Math.random()*2000);
+          setTimeout(() => { if (netState && netState.cIdx === m.cIdx) { netState.h.a = true; netState.h.v = Math.floor(Math.random()*3); checkAdminMatchNext(); } }, 1500 + Math.random()*2000);
       }
-      
       if (isAiG && !m.g.a && !m.g.aiQueued) {
           m.g.aiQueued = true;
-          setTimeout(() => {
-              if (netState && netState.cIdx === m.cIdx) {
-                  netState.g.a = true; netState.g.v = Math.floor(Math.random()*3);
-                  checkAdminMatchNext();
-              }
-          }, 1500 + Math.random()*2000);
+          setTimeout(() => { if (netState && netState.cIdx === m.cIdx) { netState.g.a = true; netState.g.v = Math.floor(Math.random()*3); checkAdminMatchNext(); } }, 1500 + Math.random()*2000);
       }
   }
 
-  // --- (學生端) 輸入房號連線 ---
+  // --- (學生端) 輸入密鑰加入 Firebase 房間 ---
   window.joinMatch = () => {
+      if(!checkFirebaseReady()) return;
+
       let code = $('inp-mp-code').value.trim().toUpperCase();
       let n = $('inp-mp-name').value.trim() || "Challenger";
       if(!code) return sysNotify("請輸入連線密鑰");
 
       $('arena-setup').style.display='none'; $('arena-wait').style.display='block';
       $('ui-room-code').textContent = code; $('ui-host-name').textContent = n;
-      $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接老師的主機中...</div>`;
+      $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接資料庫中...</div>`;
 
-      // 徹底清理前一次可能失敗的連線通道
-      if (myPeer) {
-          myPeer.destroy();
-      }
-      
       myRole = 'student';
-      
-      // 給予延遲確保銷毀完畢後再發起新連線
-      setTimeout(() => {
-          myPeer = new Peer(peerConfig);
-          
-          myPeer.on('open', (id) => {
-              myId = id; // 使用 PeerJS 真實核發的 ID
-              
-              // reliable: true 保障指令封包不會遺失
-              myConn = myPeer.connect('TacTerm_Host_' + code, { reliable: true });
-              
-              myConn.on('open', () => {
-                  myConn.send({ type: 'JOIN', name: n, id: myId });
-                  $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連線，請求加入排程...</div>`;
-              });
-              
-              myConn.on('data', (data) => handleHostMessage(data));
-              
-              myConn.on('close', () => {
-                  sysNotify("與伺服器斷開連線");
-                  resetArena();
-              });
-          });
-          
-          // 【穩定性機制】如果伺服器將學生幽靈斷線，系統自動重新連接
-          myPeer.on('disconnected', () => {
-              console.log("學生與信令伺服器斷開，嘗試重連...");
-              if (!myPeer.destroyed) {
-                  myPeer.reconnect();
-              }
-          });
-          
-          myPeer.on('error', (err) => {
-              console.error("PeerJS Client Error:", err);
+      // 隨機產生穩定的本地端 ID
+      myId = 's_' + Math.random().toString(36).substring(2, 10);
+      adminTourCode = code;
+
+      const roomRef = db.ref('tacterm_rooms/' + code);
+
+      // 確認房間是否存在
+      roomRef.once('value').then(snap => {
+          if(!snap.exists()) {
+              sysNotify("找不到該密鑰的賽事，請確認老師已建立房間");
               resetArena();
-              if (err.type === 'peer-unavailable') {
-                  sysNotify("找不到該密鑰的賽事，請確認代碼是否正確");
-              } else {
-                  sysNotify("連線失敗，請檢查網路防火牆限制");
+              return;
+          }
+
+          // 發送加入請求
+          roomRef.child('joinRequests').child(myId).set(n);
+          $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連接，請求加入排程...</div>`;
+
+          // 【開始監聽整個房間的變化】
+          if(window.roomListenerUnsubscribe) window.roomListenerUnsubscribe();
+          
+          let listener = roomRef.on('value', syncSnap => {
+              let data = syncSnap.val();
+              if(!data) {
+                  sysNotify("賽事已被管理員關閉");
+                  resetArena();
+                  return;
               }
+              handleHostMessage(data);
           });
-      }, 500);
+          // 儲存卸載函數，方便重置時使用
+          window.roomListenerUnsubscribe = () => roomRef.off('value', listener);
+
+      }).catch(err => {
+          console.error(err);
+          sysNotify("資料庫讀取失敗，請檢查網路連線或金鑰");
+          resetArena();
+      });
   };
 
-  // --- (學生端) 處理來自老師的廣播 ---
-  function handleHostMessage(msg) {
-      // 處理被老師踢除的訊號
-      if (msg.type === 'KICKED') {
+  // --- (學生端) 處理 Firebase 同步過來的房間資料 ---
+  function handleHostMessage(data) {
+      // 1. 檢查是否被老師踢除
+      if (data.kicked && data.kicked[myId]) {
           sysNotify("你已被管理員移出賽事！");
           resetArena();
           return;
       }
       
-      if (msg.type === 'SYNC') {
-          let bData = msg.bracket;
-          let am = msg.activeMatch;
-          
-          // 1. 檢查自己是否在賽程表中
-          let inBracket = false;
-          if (bData) {
-              bData.forEach(m => {
-                  if (m.p1 && m.p1.id === myId) inBracket = true;
-                  if (m.p2 && m.p2.id === myId) inBracket = true;
-              });
-          }
-          
-          // 2. 檢查現在「正在進行的比賽」是不是我
-          let isMyMatch = am && (am.h.id === myId || am.g.id === myId);
-          
-          if (isMyMatch) {
-              // 被點名開戰，切換到戰鬥畫面！
-              netState = am;
-              pushNetUpdate();
-          } else if (inBracket) {
-              // 在等候室
-              $('arena-setup').style.display='none'; $('arena-combat').style.display='none'; $('arena-result').style.display='none';
-              $('arena-wait').style.display='block';
-              $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功排入賽程<br><br>等待管理員點名開賽...</div>`;
-          } else {
-              // 還沒被收編 (或是已經被淘汰)
-              $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">觀戰模式 // 等待中...</div>`;
-          }
+      let bData = data.bracket;
+      let am = data.activeMatch;
+      
+      let inBracket = false;
+      if (bData) {
+          bData.forEach(m => {
+              if (m.p1 && m.p1.id === myId) inBracket = true;
+              if (m.p2 && m.p2.id === myId) inBracket = true;
+          });
+      }
+      
+      let isMyMatch = am && (am.h.id === myId || am.g.id === myId);
+      
+      if (isMyMatch) {
+          netState = am;
+          pushNetUpdate();
+      } else if (inBracket) {
+          $('arena-setup').style.display='none'; $('arena-combat').style.display='none'; $('arena-result').style.display='none';
+          $('arena-wait').style.display='block';
+          $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功排入賽程<br><br>等待管理員點名開賽...</div>`;
+      } else {
+          $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">觀戰模式 // 等待中...</div>`;
       }
   }
 
-  // --- (學生端) 戰鬥畫面同步更新 ---
   function pushNetUpdate() {
       let d = netState; if(!d) return;
       if(d.stat === 'play'){
@@ -1028,17 +927,14 @@ body {
           let oppP = (d.h.id === myId) ? d.g : (d.h);
           let q = d.qs[d.cIdx];
 
-          // 自己還沒作答
           if(myP && !myP.a) {
               $('ui-combat-q').innerHTML = q.text;
               $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
               $('ui-combat-status').textContent = "等待輸入指令..."; $('ui-combat-status').style.color = "var(--neon-cyan)";
           }
-          // 自己已作答
           if(myP && myP.a) {
               [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; });
               let mB = $(`mp-opt-${myP.v}`); if(mB) mB.classList.add(myP.v===q.ans ? 'correct':'wrong');
-              
               if(oppP && oppP.a) {
                   $('ui-combat-status').textContent = "處理下一回合資料..."; $('ui-combat-status').style.color = "var(--neon-yellow)";
                   let cB = $(`mp-opt-${q.ans}`); if(cB) cB.classList.add('correct');
@@ -1047,7 +943,6 @@ body {
               }
           }
       } else if (d.stat === 'fin') {
-          // 比賽結束
           $('arena-combat').style.display='none'; $('arena-result').style.display='block';
           $('ui-res-p1n').textContent = d.h.n; $('ui-res-p1s').textContent = d.h.s;
           $('ui-res-p2n').textContent = d.g.n; $('ui-res-p2s').textContent = d.g.s;
@@ -1063,31 +958,25 @@ body {
           let btnRet = $('btn-return-lobby');
           btnRet.innerHTML = "<span>返回 // 大廳等待晉級</span>";
           btnRet.onclick = () => {
-              $('arena-result').style.display='none';
-              $('arena-wait').style.display='block';
+              $('arena-result').style.display='none'; $('arena-wait').style.display='block';
               $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 戰鬥結算完成<br><br>請等待管理員安排下一輪賽事...</div>`;
           };
       }
   }
 
-  // --- (學生端) 傳送答案給老師 ---
   window.sendNetAns = (val) => {
       if(!netState || netState.stat !== 'play') return;
       let pKey = (netState.h.id === myId) ? 'h' : (netState.g.id === myId ? 'g' : null);
       if(!pKey || netState[pKey].a) return;
 
-      [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); // freeze UI
+      [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); 
       
-      // 透過 P2P 發送給主機
-      if (myConn && myConn.open) {
-          myConn.send({ type: 'ANSWER', id: myId, val: val });
-          
-          // 本地搶先預先顯示 UI
-          netState[pKey].a = true; netState[pKey].v = val;
-          pushNetUpdate();
-      } else {
-          sysNotify("網路斷線，無法傳送答案");
-      }
+      // 本地搶先預先顯示 UI，帶來無延遲錯覺
+      netState[pKey].a = true; netState[pKey].v = val;
+      pushNetUpdate();
+
+      // 將答案寫回 Firebase，通知老師計算
+      db.ref('tacterm_rooms/' + adminTourCode + '/answers/' + myId).set(val);
   };
 
 
@@ -1095,29 +984,20 @@ body {
   // 4. UI 渲染功能 (賽事樹狀圖)
   // =========================================
   
-  // (老師端) 踢除選手功能，並通知學生端
+  // (老師端) 踢除選手功能，會寫入 Firebase 通知該名學生退出
   window.delTrnPlayer = (e, mI, pK) => { 
       e.stopPropagation(); 
       if(trnData[mI].stat !== 'wait') return sysNotify('錯誤: 賽事已開始'); 
       
       let studentId = trnData[mI][pK].id;
-      
-      // 發送踢除訊號給特定學生
-      if(studentId && clientConns[studentId]) {
-          if (clientConns[studentId].open) {
-              clientConns[studentId].send({ type: 'KICKED' });
-          }
-          // 稍微延遲後清理連線
-          setTimeout(() => {
-              if(clientConns[studentId]) clientConns[studentId].close();
-              delete clientConns[studentId];
-          }, 500);
+      // 只要不是虛擬對手 (b_開頭)，就在資料庫標記他被踢了
+      if(studentId && !studentId.startsWith('b_')) {
+          db.ref('tacterm_rooms/' + adminTourCode + '/kicked/' + studentId).set(true);
       }
       
-      trnData[mI][pK].id = null; 
-      trnData[mI][pK].n = ''; 
+      trnData[mI][pK].id = null; trnData[mI][pK].n = ''; 
       renderBracketUI(); 
-      broadcastSync(); // 重要：通知全場名單變動
+      broadcastSync(); // 同步給所有人名單更新
       sysNotify('已將選手移出槽位');
   };
   
@@ -1134,6 +1014,7 @@ body {
               ['p1','p2'].forEach(pK => {
                   let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
                   if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
+                  // 點擊 X 觸發踢人
                   let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
                   slt.innerHTML = `${m[pK].n||(m[pK].e?'等待加入...':'未定...') } ${btn}`;
                   slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
@@ -1202,7 +1083,7 @@ body {
           }
       }
       renderBracketUI();
-      broadcastSync(); // 位置調換也廣播
+      broadcastSync(); 
   }
 
   window.fillAIBots = () => {
@@ -1213,7 +1094,7 @@ body {
           if (trnData[i].p2.e && !trnData[i].p2.n) { trnData[i].p2.id = 'b_'+Math.random(); trnData[i].p2.n = bNs[bI++ % bNs.length]; }
       }
       renderBracketUI(); 
-      broadcastSync(); // 更新 AI 名單廣播
+      broadcastSync(); 
       sysNotify('虛擬選手載入完畢');
   };
 </script>
