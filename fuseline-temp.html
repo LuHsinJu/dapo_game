@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆-測試</title>
+<title>導火線：切點引爆</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -448,6 +448,13 @@ body {
                     <div style="display:flex; align-items:center; gap:15px;">
                         <label style="font-size:12px; font-weight:900; color:var(--text-muted);" class="font-cyber">參賽人數</label>
                         <input type="number" id="inp-tour-size" value="8" min="2" max="32" class="cyber-input font-cyber" style="width:80px; padding:10px; text-align:center;">
+                        
+                        <label style="font-size:12px; font-weight:900; color:var(--text-muted); margin-left:10px;" class="font-cyber">賽制</label>
+                        <select id="inp-tour-type" class="cyber-input font-cyber" style="width:110px; padding:10px; text-align:center; cursor:pointer;">
+                            <option value="SE">單淘汰</option>
+                            <option value="DE">雙淘汰</option>
+                        </select>
+                        
                         <button class="btn-cyber" style="padding:10px 20px; font-size:12px;" onclick="genBracket()"><span>生成並啟用新賽制</span></button>
                     </div>
                     <button class="btn-cyber pink" style="padding:10px 20px; font-size:12px;" onclick="fillAIBots()"><span>自動填入虛擬對手</span></button>
@@ -752,31 +759,123 @@ body {
   }
 
   // --- (老師端) 生成全新賽事 ---
-  let trnData = [], trnSwap = { m:-1, k:'' }, trnRounds = [], trnSz = 16;
+  let trnData = [], trnSwap = { m:-1, k:'' }, trnLayout = { w:[], l:[], f:[] }, tourType = 'SE';
   function nextPow2(n) { return n < 2 ? 2 : Math.pow(2, Math.ceil(Math.log2(n))); }
   
   window.genBracket = () => {
       if(!checkFirebaseReady()) return;
 
-      let N = parseInt($('inp-tour-size').value) || 8;
-      if(N<2 || N>32) return sysNotify('錯誤: 支援 2-32 人');
+      let reqN = parseInt($('inp-tour-size').value) || 8;
+      if(reqN<2 || reqN>32) return sysNotify('錯誤: 支援 2-32 人');
+      tourType = $('inp-tour-type').value;
       
       adminTourCode = Math.random().toString(36).substring(2, 6).toUpperCase();
       $('ui-tour-code').textContent = adminTourCode;
       
-      trnSz = nextPow2(N); let totalM = trnSz - 1, r1M = trnSz / 2, byes = trnSz - N, realM = r1M - byes;
-      trnData = Array.from({length: totalM}, ()=>({ p1:{id:null, n:'', e:false}, p2:{id:null, n:'', e:false}, w:0, stat:'wait', isB:false }));
-      trnRounds = []; let sz = trnSz, sIdx = 0;
-      while(sz>1){ let m = sz/2; trnRounds.push([sIdx, sIdx+m]); sIdx+=m; sz/=2; }
+      let N = nextPow2(reqN);
+      trnData = []; trnLayout = { w:[], l:[], f:[] };
+      let mIdx = 0;
       
-      for(let i=0; i<r1M; i++){
-          if(i<realM){ trnData[i].p1.e=true; trnData[i].p2.e=true; }
-          else {
-              trnData[i].isB = true; trnData[i].stat = 'fin'; trnData[i].w = 1;
-              let nMIdx = r1M + Math.floor(i/2);
-              if(i%2===0) trnData[nMIdx].p1={id:null, n:'', e:true}; else trnData[nMIdx].p2={id:null, n:'', e:true};
+      // 1. 建立勝部賽區 (Winners Bracket)
+      let wSz = N;
+      while(wSz > 1) {
+          let col = [];
+          for(let i=0; i<wSz/2; i++) {
+              let m = { id: mIdx++, type: 'W', p1:{e:false}, p2:{e:false}, nextW:null, nextL:null, stat:'wait', isB:false };
+              col.push(m.id); trnData.push(m);
+          }
+          trnLayout.w.push(col); wSz /= 2;
+      }
+      
+      // 連結勝部節點 (前進下一輪)
+      for(let r=0; r<trnLayout.w.length-1; r++) {
+          for(let i=0; i<trnLayout.w[r].length; i++) {
+              trnData[trnLayout.w[r][i]].nextW = { id: trnLayout.w[r+1][Math.floor(i/2)], k: i%2===0?'p1':'p2' };
           }
       }
+      
+      // 開放第一輪的加入槽位
+      for(let i=0; i<N/2; i++) {
+          trnData[trnLayout.w[0][i]].p1.e = true;
+          trnData[trnLayout.w[0][i]].p2.e = true;
+      }
+
+      if (tourType === 'SE') {
+          // [單淘汰] 處理輪空 (Byes)
+          let byes = N - reqN;
+          for(let i=0; i<byes; i++) {
+              let m = trnData[trnLayout.w[0][trnLayout.w[0].length-1-i]]; 
+              m.isB = true; m.stat = 'fin'; m.w = 1;
+              if(m.nextW) trnData[m.nextW.id][m.nextW.k] = { e:true, n:'', id:null };
+          }
+      } else {
+          // [雙淘汰] 建立敗部賽區 (Losers Bracket)
+          let r_w = 0, r_l = 0;
+          let prevLSize = trnLayout.w[0].length / 2;
+
+          while(r_w < trnLayout.w.length) {
+              if(r_w === 0) {
+                  let col = [];
+                  for(let i=0; i<prevLSize; i++) {
+                      let m = { id: mIdx++, type: 'L', p1:{e:false}, p2:{e:false}, nextW:null, nextL:null, stat:'wait' };
+                      col.push(m.id); trnData.push(m);
+                  }
+                  trnLayout.l.push(col);
+                  // 將勝部第一輪的戰敗者連線至敗部
+                  for(let i=0; i<trnLayout.w[0].length; i++) {
+                      trnData[trnLayout.w[0][i]].nextL = { id: col[Math.floor(i/2)], k: i%2===0?'p1':'p2' };
+                  }
+                  r_w++; r_l++;
+              } else {
+                  let numDrops = trnLayout.w[r_w].length;
+                  let crossCol = [];
+                  for(let i=0; i<numDrops; i++) {
+                      let m = { id: mIdx++, type: 'L', p1:{e:false}, p2:{e:false}, nextW:null, nextL:null, stat:'wait' };
+                      crossCol.push(m.id); trnData.push(m);
+                  }
+                  trnLayout.l.push(crossCol);
+                  
+                  // 勝部戰敗者掉入此輪
+                  for(let i=0; i<numDrops; i++) trnData[trnLayout.w[r_w][i]].nextL = { id: crossCol[i], k: 'p1' };
+                  // 敗部前一輪勝者晉級至此輪
+                  let prevColIds = trnLayout.l[r_l-1];
+                  for(let i=0; i<prevColIds.length; i++) trnData[prevColIds[i]].nextW = { id: crossCol[i], k: 'p2' };
+                  
+                  prevLSize = crossCol.length; r_l++; r_w++;
+
+                  // 若同規模超過一場，需增加一輪敗部自相殘殺以減半人數
+                  if(prevLSize > 1 && r_w < trnLayout.w.length) {
+                      let halveCol = [];
+                      for(let i=0; i<prevLSize/2; i++) {
+                          let m = { id: mIdx++, type: 'L', p1:{e:false}, p2:{e:false}, nextW:null, nextL:null, stat:'wait' };
+                          halveCol.push(m.id); trnData.push(m);
+                      }
+                      trnLayout.l.push(halveCol);
+                      for(let i=0; i<prevLSize; i++) trnData[crossCol[i]].nextW = { id: halveCol[Math.floor(i/2)], k: i%2===0?'p1':'p2' };
+                      prevLSize = halveCol.length; r_l++;
+                  }
+              }
+          }
+
+          // 建立總冠軍戰 (Grand Final)
+          let fMatch = { id: mIdx++, type: 'F', p1:{e:false}, p2:{e:false}, nextW:null, nextL:null, stat:'wait' };
+          trnData.push(fMatch); trnLayout.f.push(fMatch.id);
+          
+          trnData[trnLayout.w[trnLayout.w.length-1][0]].nextW = { id: fMatch.id, k: 'p1' }; // 勝部冠軍
+          trnData[trnLayout.l[trnLayout.l.length-1][0]].nextW = { id: fMatch.id, k: 'p2' }; // 敗部冠軍
+
+          // [雙淘汰] 為了避免輪空路由邏輯錯亂，不足人數自動補入虛擬對手
+          let bNs = ['Bot_Alpha','Bot_Beta','Bot_Gamma','Bot_Delta','Bot_Epsilon','Bot_Zeta','Bot_Eta','Bot_Theta','Bot_Iota'];
+          let bI = 0; let missing = N - reqN;
+          for (let i=0; i<missing; i++) {
+              for (let j=0; j<trnLayout.w[0].length; j++) {
+                  let m = trnData[trnLayout.w[0][j]];
+                  if (m.p1.e && !m.p1.n) { m.p1 = { id: 'b_'+Math.random(), n: bNs[bI++%bNs.length], e: false }; break; }
+                  if (m.p2.e && !m.p2.n) { m.p2 = { id: 'b_'+Math.random(), n: bNs[bI++%bNs.length], e: false }; break; }
+              }
+          }
+      }
+
       trnSwap = {m:-1, k:''}; 
       netState = null; 
       renderBracketUI(); 
@@ -821,9 +920,8 @@ body {
           if (pKey && !netState[pKey].a) {
               netState[pKey].a = true;
               netState[pKey].v = msg.val;
-              netState[pKey].ansTime = Date.now(); // 記錄作答精確時間(毫秒)，用於驟死賽判定
+              netState[pKey].ansTime = Date.now();
               
-              // 若這回合有人搶先作答，啟動 10 秒倒數
               let oppKey = (pKey === 'h') ? 'g' : 'h';
               if (!netState[oppKey].a) {
                   netState.timerStart = Date.now();
@@ -848,7 +946,6 @@ body {
       }
       let elapsed = (Date.now() - m.timerStart) / 1000;
       if (elapsed >= m.timerDuration) {
-          // 超時！強制作答錯誤並給予極大延遲時間
           if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = Infinity; }
           if (!m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = Infinity; }
           clearInterval(window.adminMatchTimer);
@@ -961,6 +1058,9 @@ body {
               broadcastSync(); // 同步，此時雙方 a=true，客戶端會顯示正確答案
               
               setTimeout(() => {
+              broadcastSync(); 
+              
+              setTimeout(() => {
                   let matchEnded = false;
                   let winner = 0;
 
@@ -969,21 +1069,18 @@ body {
                           matchEnded = true;
                           winner = m.sdWinner;
                       } else {
-                          // 雙方皆錯，延長驟死賽，追加題目
                           m.cIdx++;
                           m.qs.push(getGeoTask());
                       }
                   } else {
                       m.cIdx++;
-                      if (m.cIdx >= 20) { // 20回合結束
+                      if (m.cIdx >= 20) { 
                           if (m.h.s > m.g.s) { matchEnded = true; winner = 1; }
                           else if (m.g.s > m.h.s) { matchEnded = true; winner = 2; }
                           else {
-                              // 分數相同，比對最大連擊數
                               if (m.h.maxCb > m.g.maxCb) { matchEnded = true; winner = 1; }
                               else if (m.g.maxCb > m.h.maxCb) { matchEnded = true; winner = 2; }
                               else {
-                                  // 連擊數也相同，進入延長驟死賽！追加一題並繼續
                                   m.suddenDeath = true;
                                   m.qs.push(getGeoTask());
                                   sysNotify("⚠️ 雙方同分且同連擊，進入延長驟死賽！");
@@ -994,19 +1091,19 @@ body {
 
                   if (matchEnded) {
                       m.stat = 'fin'; 
-                      m.winner = winner; // 傳遞給客戶端
+                      m.winner = winner; 
                       let bMatch = trnData[m.matchId]; 
                       bMatch.stat = 'fin';
                       bMatch.w = winner; 
                       
                       let wO = winner === 1 ? bMatch.p1 : bMatch.p2;
+                      let lO = winner === 1 ? bMatch.p2 : bMatch.p1;
                       sysNotify(`獲勝晉級者: ${wO.n}`);
-                      let cRI = trnRounds.findIndex(rnd => m.matchId >= rnd[0] && m.matchId < rnd[1]);
-                      if(cRI !== -1 && cRI < trnRounds.length - 1) {
-                          let off = m.matchId - trnRounds[cRI][0], nMIdx = trnRounds[cRI + 1][0] + Math.floor(off / 2);
-                          if (off % 2 === 0) trnData[nMIdx].p1 = {id: wO.id, n: wO.n, e: false};
-                          else trnData[nMIdx].p2 = {id: wO.id, n: wO.n, e: false};
-                      }
+                      
+                      // 利用節點路由機制推進選手
+                      if(bMatch.nextW) trnData[bMatch.nextW.id][bMatch.nextW.k] = { id: wO.id, n: wO.n, e: false };
+                      if(bMatch.nextL) trnData[bMatch.nextL.id][bMatch.nextL.k] = { id: lO.id, n: lO.n, e: false };
+                      
                       renderBracketUI();
                   } else {
                       m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
@@ -1016,7 +1113,7 @@ body {
                   
                   broadcastSync();
                   window.adminProcessingMatch = false;
-              }, 2500); // 給予 2.5 秒顯示正確答案結果
+              }, 2500);
           }
       } else if ((m.h.a && !m.g.a) || (!m.h.a && m.g.a)) {
           // 其中一方已作答，啟動 10 秒強制倒數
@@ -1292,67 +1389,66 @@ body {
   
   function renderBracketUI() {
       const con = $('bracket-cols'); if(!con) return; con.innerHTML = '';
-      trnRounds.forEach((rnd, rI) => {
-          let col = document.createElement('div'); col.className = 'bracket-col';
-          for(let i=rnd[0]; i<rnd[1]; i++){
-              let m = trnData[i];
-              let box = document.createElement('div'); box.className = `match-card ${m.stat==='play'?'active':''}`; box.id = `mc-${i}`;
-              if(m.isB){ box.style.visibility='hidden'; col.appendChild(box); continue; }
-              box.innerHTML = `<div style="font-size:10px; color:var(--text-muted); position:absolute; top:3px; right:5px;" class="font-cyber">M${i+1}</div>`;
-              
-              ['p1','p2'].forEach(pK => {
-                  let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
-                  if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
-                  let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
-                  slt.innerHTML = `${m[pK].n||(m[pK].e?'等待加入...':'未定...') } ${btn}`;
-                  slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
+      
+      // 定義區塊繪製函數 (支援勝部/敗部隔離渲染)
+      const renderBlock = (layoutArr, titleText, color) => {
+          if (layoutArr.length === 0) return;
+          let block = document.createElement('div');
+          block.style = 'display:flex; gap:50px; margin-bottom: 40px; padding: 30px 20px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid #333; position: relative;';
+          let title = document.createElement('div'); 
+          title.style=`position:absolute; top:-12px; left:20px; background:var(--bg-panel); color:${color}; padding:0 10px; font-weight:900; font-size:14px; border-left:3px solid ${color};`; 
+          title.innerText = titleText;
+          block.appendChild(title);
+          
+          layoutArr.forEach((colIds, rI) => {
+              let col = document.createElement('div'); col.className = 'bracket-col';
+              colIds.forEach(i => {
+                  let m = trnData[i];
+                  let box = document.createElement('div'); box.className = `match-card ${m.stat==='play'?'active':''}`; box.id = `mc-${i}`;
+                  if(m.isB) { box.style.visibility='hidden'; col.appendChild(box); return; }
+                  box.innerHTML = `<div style="font-size:10px; color:var(--text-muted); position:absolute; top:3px; right:5px;" class="font-cyber">M${i+1}</div>`;
+                  
+                  ['p1','p2'].forEach(pK => {
+                      let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
+                      if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
+                      let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
+                      slt.innerHTML = `${m[pK].n||(m[pK].e?'等待加入...':'未定...') } ${btn}`;
+                      slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
+                  });
+                  
+                  if(m.stat==='play'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:var(--neon-yellow);font-weight:900;margin-top:5px;'; b.innerText='對決進行中'; box.appendChild(b); }
+                  else if(m.stat==='fin'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:#555;font-weight:900;margin-top:5px;'; b.innerText='已結束'; box.appendChild(b); }
+                  else if(m.p1.n && m.p2.n){ let b=document.createElement('button'); b.className='btn-cyber'; b.style='width:100%;font-size:11px;padding:5px;margin-top:8px;'; b.innerText='開始對戰'; b.onclick = ()=>runTrnMatch(i); box.appendChild(b); }
+                  col.appendChild(box);
               });
-              
-              if(m.stat==='play'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:var(--neon-yellow);font-weight:900;margin-top:5px;'; b.innerText='對決進行中'; box.appendChild(b); }
-              else if(m.stat==='fin'){ let b=document.createElement('div'); b.style='text-align:center;font-size:11px;color:#555;font-weight:900;margin-top:5px;'; b.innerText='已結束'; box.appendChild(b); }
-              else if(m.p1.n && m.p2.n){ let b=document.createElement('button'); b.className='btn-cyber'; b.style='width:100%;font-size:11px;padding:5px;margin-top:8px;'; b.innerText='開始對戰'; b.onclick = ()=>runTrnMatch(i); box.appendChild(b); }
-              col.appendChild(box);
-          }
-          con.appendChild(col);
-      });
-      // Champion
-      let cCol = document.createElement('div'); cCol.className='bracket-col'; cCol.style.justifyContent='center';
-      let cBox = document.createElement('div'); cBox.className='match-card'; cBox.id='mc-champ'; cBox.style.borderColor='var(--neon-yellow)'; cBox.style.textAlign='center'; cBox.style.padding='20px'; cBox.style.background='rgba(255,230,0,0.1)';
-      cBox.innerHTML = `<div style="color:var(--neon-yellow);font-weight:900;margin-bottom:10px;font-size:14px;" class="font-cyber">[ 總冠軍 ]</div>`;
-      let finM = trnData[trnSz-2], cName='待定'; if(finM && finM.stat==='fin') cName = finM.w===1?finM.p1.n:finM.p2.n;
-      cBox.innerHTML += `<div style="font-size:20px;font-weight:900;color:white;" class="font-cyber">${cName}</div>`;
-      cCol.appendChild(cBox); con.appendChild(cCol);
-      setTimeout(drawBracketPaths, 50);
+              block.appendChild(col);
+          });
+          con.appendChild(block);
+      };
+
+      if (tourType === 'SE') {
+          renderBlock(trnLayout.w, '單淘汰錦標賽 (SINGLE ELIMINATION)', 'var(--neon-cyan)');
+          // 單淘汰時保留總冠軍視覺效果
+          let cCol = document.createElement('div'); cCol.className='bracket-col'; cCol.style.justifyContent='center'; cCol.style.marginTop='-30px';
+          let cBox = document.createElement('div'); cBox.className='match-card'; cBox.id='mc-champ'; cBox.style.borderColor='var(--neon-yellow)'; cBox.style.textAlign='center'; cBox.style.padding='20px'; cBox.style.background='rgba(255,230,0,0.1)';
+          cBox.innerHTML = `<div style="color:var(--neon-yellow);font-weight:900;margin-bottom:10px;font-size:14px;" class="font-cyber">[ 總冠軍 ]</div>`;
+          let finM = trnData[trnData.length-1], cName='待定'; if(finM && finM.stat==='fin' && !finM.isB) cName = finM.w===1?finM.p1.n:finM.p2.n;
+          cBox.innerHTML += `<div style="font-size:20px;font-weight:900;color:white;" class="font-cyber">${cName}</div>`;
+          cCol.appendChild(cBox); con.appendChild(cCol);
+      } else {
+          renderBlock(trnLayout.w, '勝部賽區 (WINNERS BRACKET)', 'var(--neon-cyan)');
+          renderBlock(trnLayout.l, '敗部賽區 (LOSERS BRACKET)', 'var(--neon-magenta)');
+          renderBlock(trnLayout.f, '總冠軍戰 (GRAND FINAL)', 'var(--neon-yellow)');
+      }
+      
+      // 清空舊版跨區連線繪製，新版採獨立區塊佈局視覺已足夠清晰
+      $('bracket-svg').innerHTML = ''; 
   }
 
   function drawBracketPaths(){
-      const svg = $('bracket-svg'), con = $('bracket-cols'); if(!svg||!con) return;
-      svg.setAttribute('width', con.scrollWidth); svg.setAttribute('height', con.scrollHeight); svg.innerHTML = '';
-      const cRect = con.getBoundingClientRect();
-      for (let rI = 0; rI < trnRounds.length - 1; rI++) {
-          let cR = trnRounds[rI];
-          for (let i = cR[0]; i < cR[1]; i++) {
-              if (trnData[i].isB) continue;
-              let b1 = $(`mc-${i}`), b2 = $(`mc-${trnRounds[rI+1][0] + Math.floor((i - cR[0]) / 2)}`);
-              if (b1 && b2) {
-                  let r1 = b1.getBoundingClientRect(), r2 = b2.getBoundingClientRect();
-                  let sX = r1.right - cRect.left + con.scrollLeft, sY = r1.top + r1.height / 2 - cRect.top + con.scrollTop;
-                  let eX = r2.left - cRect.left + con.scrollLeft - 10, eY = r2.top + r2.height * ((i - cR[0]) % 2 === 0 ? 0.25 : 0.75) - cRect.top + con.scrollTop;
-                  let p = document.createElementNS("http://www.w3.org/2000/svg", "path"), mX = sX + (eX - sX) / 2;
-                  p.setAttribute('d', `M ${sX} ${sY} C ${mX} ${sY}, ${mX} ${eY}, ${eX} ${eY}`);
-                  p.setAttribute('stroke', 'var(--border-color)'); p.setAttribute('stroke-width', '2'); p.setAttribute('fill', 'transparent');
-                  svg.appendChild(p);
-              }
-          }
-      }
-      let fB = $(`mc-${trnSz - 2}`), cB = $(`mc-champ`);
-      if(fB && cB && fB.style.visibility !== 'hidden') {
-          let r1 = fB.getBoundingClientRect(), r2 = cB.getBoundingClientRect();
-          let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-          p.setAttribute('d', `M ${r1.right - cRect.left + con.scrollLeft} ${r1.top + r1.height / 2 - cRect.top + con.scrollTop} L ${r2.left - cRect.left + con.scrollLeft} ${r2.top + r2.height / 2 - cRect.top + con.scrollTop}`);
-          p.setAttribute('stroke', 'var(--neon-yellow)'); p.setAttribute('stroke-width', '2'); p.setAttribute('fill', 'transparent'); p.setAttribute('stroke-dasharray', '4 4');
-          svg.appendChild(p);
-      }
+      // 雙淘汰與分區顯示後，跨區繪線容易造成視覺混亂，因此暫時關閉背景連線。
+      // 版面上的區塊排列與標籤已清楚指示賽程進度。
+      $('bracket-svg').innerHTML = ''; 
   }
   window.addEventListener('resize', ()=>{ if($('view-admin').classList.contains('active')) drawBracketPaths(); });
 
