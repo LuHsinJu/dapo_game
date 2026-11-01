@@ -167,11 +167,14 @@ body {
 
 .quiz-box { max-width: 800px; margin: 0 auto; }
 .q-text { font-size: 24px; font-weight: 700; line-height: 1.6; text-align: center; padding: 50px 30px; background: rgba(0,0,0,0.4); border: 1px solid #333; margin-bottom: 30px; border-top: 3px solid var(--neon-cyan); }
-.opt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-.opt-btn { background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #444; padding: 25px 15px; font-size: 18px; font-weight: 900; cursor: pointer; transition: 0.2s; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+
+/* 選項改為一條線排版 */
+.opt-grid { display: flex; flex-direction: row; gap: 15px; width: 100%; justify-content: space-between; }
+.opt-btn { flex: 1; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid #444; padding: 25px 15px; font-size: 18px; font-weight: 900; cursor: pointer; transition: 0.2s; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
 .opt-btn:hover:not(:disabled) { border-color: var(--neon-cyan); background: rgba(0,240,255,0.1); transform: translateY(-5px); }
-.opt-btn.correct { background: rgba(0,255,102,0.2) !important; color: var(--neon-green); border-color: var(--neon-green); }
-.opt-btn.wrong { background: rgba(255,0,85,0.2) !important; color: var(--neon-magenta); border-color: var(--neon-magenta); }
+.opt-btn.correct { background: rgba(0,255,102,0.2) !important; color: var(--neon-green) !important; border-color: var(--neon-green) !important; }
+.opt-btn.wrong { background: rgba(255,0,85,0.2) !important; color: var(--neon-magenta) !important; border-color: var(--neon-magenta) !important; }
+.opt-btn.selected { border-color: var(--neon-cyan) !important; background: rgba(0,240,255,0.2) !important; transform: translateY(-5px); box-shadow: 0 0 10px rgba(0,240,255,0.5); }
 
 .bracket-scroll { overflow-x: auto; padding: 20px 0 40px; min-height: 400px; display: flex; position: relative; }
 .bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 30px; min-width: 220px; padding: 0 30px; position: relative; z-index: 10; }
@@ -199,7 +202,11 @@ body {
     .nav-item.active { border-left: none; border-bottom-color: var(--neon-cyan); background: linear-gradient(0deg, rgba(0,240,255,0.1), transparent); }
     .nav-icon { font-size: 20px; }
     .dashboard-grid { grid-template-columns: 1fr; }
-    .opt-grid { grid-template-columns: 1fr; }
+    
+    /* 手機版依然保持一條線排版，稍微縮小文字與間距 */
+    .opt-grid { flex-direction: row; gap: 8px; }
+    .opt-btn { padding: 15px 5px; font-size: 14px; }
+    
     .hero-card { justify-content: center; text-align: center; }
 }
 </style>
@@ -384,7 +391,7 @@ body {
                             <div id="ui-p1-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
                         </div>
                         <div style="padding:0 30px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">
-                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:10px;" class="font-cyber">第 1 回合 / 共 10 回合</div>
+                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:10px;" class="font-cyber">第 1 回合 / 共 20 回合</div>
                             <div style="font-size:24px; color:#444; font-weight:900; font-style:italic;" class="font-cyber">VS</div>
                         </div>
                         <div style="text-align:center; flex:1;">
@@ -393,6 +400,10 @@ body {
                         </div>
                     </div>
                     <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
+                    
+                    <!-- 搶答倒數計時器 -->
+                    <div id="ui-combat-timer" style="text-align:center; font-size:32px; color:var(--neon-magenta); font-weight:900; margin-bottom:20px; display:none; text-shadow: 0 0 10px rgba(255,0,85,0.5);" class="font-cyber">10.0s</div>
+                    
                     <div id="ui-combat-opts" class="opt-grid"></div>
                     <div id="ui-combat-status" style="text-align:center; margin-top:30px; font-weight:900; color:var(--neon-cyan); letter-spacing:2px;" class="font-cyber">等待輸入指令...</div>
                 </div>
@@ -507,8 +518,6 @@ body {
       } else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
   };
 
-  // 🔽🔽🔽 題目內容修改區塊 START 🔽🔽🔽 
-  // 若要修改題庫文字內容，請在下方區塊進行修改
   // --- 題庫引擎 ---
   function getGeoTask() {
       // 1. 隨機生成幾何參數 (半徑 r)
@@ -519,22 +528,18 @@ body {
       let d;
 
       if (rel === 0) {
-          // 距離小於半徑
           d = Math.max(0, r - (Math.floor(Math.random() * 3) + 1));
       } else if (rel === 1) {
-          // 距離等於半徑
           d = r;
       } else {
-          // 距離大於半徑
           d = r + Math.floor(Math.random() * 4) + 1;
       }
 
-      // 3. 隨機選擇題目類別 (0: 點與圓, 1: 線與圓-名詞, 2: 線與圓-交點)
+      // 3. 隨機選擇題目類別
       let category = Math.floor(Math.random() * 3);
       let text, opts, ans, explain;
 
       if (category === 0) {
-          // 【題型一：點與圓的關係】修改 text (題目敘述) / opts (按鈕文字) / explain (答對/錯的解析文字)
           text = `已知圓的半徑 <span style="color:var(--neon-green)">r = ${r}</span>，<br>目標點到圓心的距離 <span style="color:var(--neon-yellow)">d = ${d}</span>。<br><br>請問該點的位置在何處？`;
           opts = [{t:'圓內', v:0}, {t:'圓上', v:1}, {t:'圓外', v:2}];
           ans = rel; 
@@ -544,7 +549,6 @@ body {
           else explain = `d=${d} > r=${r}，距離大於半徑，點位在圓外。`;
 
       } else if (category === 1) {
-          // 【題型二：線與圓的關係 (專有名詞)】
           text = `已知圓的半徑 <span style="color:var(--neon-green)">r = ${r}</span>，<br>圓心到直線的距離 <span style="color:var(--neon-yellow)">d = ${d}</span>。<br><br>請問此直線與圓的關係為何？`;
           opts = [{t:'割線', v:0}, {t:'切線', v:1}, {t:'外離', v:2}];
           ans = rel;
@@ -554,7 +558,6 @@ body {
           else explain = `d=${d} > r=${r}，距離大於半徑，兩者未接觸，稱為「外離」。`;
 
       } else {
-          // 【題型三：線與圓的關係 (交點個數)】
           text = `已知圓的半徑 <span style="color:var(--neon-green)">r = ${r}</span>，<br>圓心到某直線的距離 <span style="color:var(--neon-yellow)">d = ${d}</span>。<br><br>請問該直線與圓共有幾個交點？`;
           opts = [{t:'2 個', v:0}, {t:'1 個', v:1}, {t:'0 個', v:2}]; 
           ans = rel;
@@ -566,7 +569,6 @@ body {
 
       return { text, opts, ans, explain };
   }
-  // 🔼🔼🔼 題目內容修改區塊 END 🔼🔼🔼
 
   // --- 1. 交點模擬 (Training) ---
   let isDraggingRadar = false;
@@ -703,9 +705,7 @@ body {
   let netState = null;
   let adminTourCode = null;
   
-  // 檢查是否已設定好 Firebase 金鑰
   function checkFirebaseReady() {
-      // 避免使用 alert()，改用系統內建的 Toast 提示
       if(firebaseConfig.apiKey === "YOUR_API_KEY") {
           sysNotify("系統警告：請先填入專屬的 Firebase 金鑰設定！");
           return false;
@@ -719,8 +719,8 @@ body {
       $('arena-setup').style.display='block'; $('arena-wait').style.display='none';
       $('arena-combat').style.display='none'; $('arena-result').style.display='none';
       netState = null;
-      // 停止監聽
       if(window.roomListenerUnsubscribe) { window.roomListenerUnsubscribe(); window.roomListenerUnsubscribe = null; }
+      if(window.clientTimerInt) { clearInterval(window.clientTimerInt); window.clientTimerInt = null; }
   }
 
   // --- (老師端) 生成全新賽事 ---
@@ -755,21 +755,18 @@ body {
 
       myRole = 'admin';
       
-      // 【寫入 Firebase 建立賽事房間】
       const roomRef = db.ref('tacterm_rooms/' + adminTourCode);
       roomRef.set({
           bracket: trnData,
           activeMatch: null,
-          kicked: { dummy: true } // 預設防止 null 錯誤
+          kicked: { dummy: true }
       }).then(() => {
           sysNotify(`賽制網路建立成功 (密鑰: ${adminTourCode})`);
       });
 
-      // 清除先前的監聽
       if(window.adminJoinListener) db.ref('tacterm_rooms').off('child_added', window.adminJoinListener);
       if(window.adminAnsListener) db.ref('tacterm_rooms').off('child_added', window.adminAnsListener);
       
-      // 【老師監聽】當有學生丟出加入請求
       window.adminJoinListener = roomRef.child('joinRequests').on('child_added', (snap) => {
           let pId = snap.key;
           let pName = snap.val();
@@ -782,12 +779,12 @@ body {
           if(added) {
               sysNotify(`特務 ${pName} 已加入排程`);
               renderBracketUI();
-              broadcastSync(); // 同步回 Firebase
+              broadcastSync();
           }
-          snap.ref.remove(); // 讀取完即刪除請求，保持 DB 乾淨
+          snap.ref.remove(); 
       });
 
-      // 【老師監聽】當有學生作答
+      // 監聽學生作答
       window.adminAnsListener = roomRef.child('answers').on('child_added', (snap) => {
           let msg = { id: snap.key, val: snap.val() };
           if (!netState || netState.stat !== 'play') return;
@@ -796,52 +793,90 @@ body {
           if (pKey && !netState[pKey].a) {
               netState[pKey].a = true;
               netState[pKey].v = msg.val;
+              
+              // 若這回合有人搶先作答，啟動 10 秒倒數
+              let oppKey = (pKey === 'h') ? 'g' : 'h';
+              if (!netState[oppKey].a) {
+                  netState.timerStart = Date.now();
+                  netState.timerDuration = 10;
+                  if (!window.adminMatchTimer) {
+                      window.adminMatchTimer = setInterval(checkAdminTimeout, 1000);
+                  }
+              }
+              
               checkAdminMatchNext();
           }
           snap.ref.remove(); 
       });
   };
 
-  // --- (老師端) 廣播最新狀態至 Firebase ---
+  function checkAdminTimeout() {
+      let m = netState;
+      if (!m || m.stat !== 'play' || !m.timerStart) {
+          clearInterval(window.adminMatchTimer);
+          window.adminMatchTimer = null;
+          return;
+      }
+      let elapsed = (Date.now() - m.timerStart) / 1000;
+      if (elapsed >= m.timerDuration) {
+          // 超時！強制作答錯誤
+          if (!m.h.a) { m.h.a = true; m.h.v = -1; }
+          if (!m.g.a) { m.g.a = true; m.g.v = -1; }
+          clearInterval(window.adminMatchTimer);
+          window.adminMatchTimer = null;
+          checkAdminMatchNext();
+      }
+  }
+
   function broadcastSync() {
       if (myRole !== 'admin' || !adminTourCode) return;
-      
-      // 更新資料庫，所有學生會自動觸發 on('value') 收到新資料
       db.ref('tacterm_rooms/' + adminTourCode).update({
           bracket: trnData,
           activeMatch: netState || null
       });
-      
       if (netState && netState.stat === 'play') checkAdminAiTurnAndNext();
   }
 
   window.runTrnMatch = (mI) => {
       let m = trnData[mI];
       if(!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
+      
+      if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
+      
       netState = {
           matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length:10}, getGeoTask),
+          qs: Array.from({length:20}, getGeoTask), // 調整為 20 回合
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, aiQueued: false},
-          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, aiQueued: false}
+          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, aiQueued: false},
+          ansTimer: null,
+          timerStart: null, timerDuration: 10
       };
       m.stat = 'play';
       renderBracketUI();
-      sysNotify(`M${mI+1} 對局開始`);
+      sysNotify(`M${mI+1} 對局開始 (共20回合)`);
       broadcastSync();
   };
 
   function checkAdminMatchNext() {
       let m = netState; if (!m || m.stat !== 'play') return;
+      
+      // 當雙方都完成作答
       if (m.h.a && m.g.a) {
           if (!window.adminProcessingMatch) {
               window.adminProcessingMatch = true;
+              
+              // 停止倒數
+              if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
+              m.timerStart = null;
+              
               if (m.h.v === m.qs[m.cIdx].ans) m.h.s += 100;
               if (m.g.v === m.qs[m.cIdx].ans) m.g.s += 100;
-              broadcastSync(); 
+              
+              broadcastSync(); // 同步，此時雙方 a=true，客戶端會顯示正確答案
               
               setTimeout(() => {
                   m.cIdx++;
-                  if (m.cIdx >= 10) {
+                  if (m.cIdx >= 20) { // 20回合結束
                       m.stat = 'fin'; let bMatch = trnData[m.matchId]; bMatch.stat = 'fin';
                       if (m.h.s === m.g.s) m.h.s += (Math.random()>0.5 ? 1 : -1);
                       bMatch.w = (m.h.s > m.g.s) ? 1 : 2; 
@@ -855,13 +890,32 @@ body {
                       }
                       renderBracketUI();
                   } else {
-                      m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
+                      m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false; m.ansTimer = null;
+                      m.timerStart = null;
                   }
                   broadcastSync();
                   window.adminProcessingMatch = false;
-              }, 2000);
+              }, 2500); // 給予 2.5 秒顯示正確答案結果
           }
-      } else { broadcastSync(); }
+      } else if ((m.h.a && !m.g.a) || (!m.h.a && m.g.a)) {
+          // 其中一方已作答，啟動 10 秒強制倒數
+          if (!m.ansTimer) {
+              m.ansTimer = Date.now();
+              broadcastSync();
+              let currentRound = m.cIdx;
+              setTimeout(() => {
+                  let currM = window.netState;
+                  // 若 10 秒後仍在同一回合且未作答完畢，強制未答者錯誤
+                  if (currM && currM.stat === 'play' && currM.cIdx === currentRound) {
+                      if (currM.h.a && !currM.g.a) { currM.g.a = true; currM.g.v = -1; }
+                      if (!currM.h.a && currM.g.a) { currM.h.a = true; currM.h.v = -1; }
+                      checkAdminMatchNext();
+                  }
+              }, 10000);
+          }
+      } else { 
+          broadcastSync(); 
+      }
   }
 
   function checkAdminAiTurnAndNext() {
@@ -869,11 +923,20 @@ body {
       let isAiH = m.h.id.startsWith('b_'), isAiG = m.g.id.startsWith('b_');
       if (isAiH && !m.h.a && !m.h.aiQueued) {
           m.h.aiQueued = true;
-          setTimeout(() => { if (netState && netState.cIdx === m.cIdx) { netState.h.a = true; netState.h.v = Math.floor(Math.random()*3); checkAdminMatchNext(); } }, 1500 + Math.random()*2000);
+          setTimeout(() => { 
+              if (netState && netState.cIdx === m.cIdx) { 
+                  // 模擬送出答案，觸發 firebase event logic
+                  db.ref('tacterm_rooms/' + adminTourCode + '/answers/' + m.h.id).set(Math.floor(Math.random()*3));
+              } 
+          }, 1500 + Math.random()*2000);
       }
       if (isAiG && !m.g.a && !m.g.aiQueued) {
           m.g.aiQueued = true;
-          setTimeout(() => { if (netState && netState.cIdx === m.cIdx) { netState.g.a = true; netState.g.v = Math.floor(Math.random()*3); checkAdminMatchNext(); } }, 1500 + Math.random()*2000);
+          setTimeout(() => { 
+              if (netState && netState.cIdx === m.cIdx) { 
+                  db.ref('tacterm_rooms/' + adminTourCode + '/answers/' + m.g.id).set(Math.floor(Math.random()*3));
+              } 
+          }, 1500 + Math.random()*2000);
       }
   }
 
@@ -890,13 +953,11 @@ body {
       $('box-guest').innerHTML=`<div style="color:var(--text-muted); font-size:14px; font-weight:700;" class="font-cyber">連接資料庫中...</div>`;
 
       myRole = 'student';
-      // 隨機產生穩定的本地端 ID
       myId = 's_' + Math.random().toString(36).substring(2, 10);
       adminTourCode = code;
 
       const roomRef = db.ref('tacterm_rooms/' + code);
 
-      // 確認房間是否存在
       roomRef.once('value').then(snap => {
           if(!snap.exists()) {
               sysNotify("找不到該密鑰的賽事，請確認老師已建立房間");
@@ -904,11 +965,9 @@ body {
               return;
           }
 
-          // 發送加入請求
           roomRef.child('joinRequests').child(myId).set(n);
           $('box-guest').innerHTML=`<div style="color:var(--neon-yellow); font-size:14px; font-weight:700;" class="font-cyber">✅ 成功連接，請求加入排程...</div>`;
 
-          // 【開始監聽整個房間的變化】
           if(window.roomListenerUnsubscribe) window.roomListenerUnsubscribe();
           
           let listener = roomRef.on('value', syncSnap => {
@@ -920,7 +979,6 @@ body {
               }
               handleHostMessage(data);
           });
-          // 儲存卸載函數，方便重置時使用
           window.roomListenerUnsubscribe = () => roomRef.off('value', listener);
 
       }).catch(err => {
@@ -932,7 +990,6 @@ body {
 
   // --- (學生端) 處理 Firebase 同步過來的房間資料 ---
   function handleHostMessage(data) {
-      // 1. 檢查是否被老師踢除
       if (data.kicked && data.kicked[myId]) {
           sysNotify("你已被管理員移出賽事！");
           resetArena();
@@ -972,26 +1029,67 @@ body {
           
           $('ui-p1-name').textContent = d.h.n; $('ui-p1-score').textContent = d.h.s;
           $('ui-p2-name').textContent = d.g.n; $('ui-p2-score').textContent = d.g.s;
-          $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 10 回合`;
+          $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 20 回合`;
 
           let myP = (d.h.id === myId) ? d.h : (d.g.id === myId ? d.g : null);
           let oppP = (d.h.id === myId) ? d.g : (d.h);
           let q = d.qs[d.cIdx];
 
+          // 處理倒數計時顯示
+          if (d.timerStart && (!d.h.a || !d.g.a)) {
+              $('ui-combat-timer').style.display = 'block';
+              if (!window.clientTimerInt) {
+                  window.clientTimerInt = setInterval(() => {
+                      if(!netState || !netState.timerStart) {
+                          clearInterval(window.clientTimerInt); window.clientTimerInt = null;
+                          $('ui-combat-timer').style.display = 'none'; return;
+                      }
+                      let remain = netState.timerDuration - (Date.now() - netState.timerStart)/1000;
+                      if (remain < 0) remain = 0;
+                      $('ui-combat-timer').textContent = remain.toFixed(1) + 's';
+                  }, 100);
+              }
+          } else {
+              $('ui-combat-timer').style.display = 'none';
+              if (window.clientTimerInt) { clearInterval(window.clientTimerInt); window.clientTimerInt = null; }
+          }
+
           if(myP && !myP.a) {
               $('ui-combat-q').innerHTML = q.text;
               $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
-              $('ui-combat-status').textContent = "等待輸入指令..."; $('ui-combat-status').style.color = "var(--neon-cyan)";
-          }
-          if(myP && myP.a) {
-              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; });
-              let mB = $(`mp-opt-${myP.v}`); if(mB) mB.classList.add(myP.v===q.ans ? 'correct':'wrong');
-              if(oppP && oppP.a) {
-                  $('ui-combat-status').textContent = "處理下一回合資料..."; $('ui-combat-status').style.color = "var(--neon-yellow)";
-                  let cB = $(`mp-opt-${q.ans}`); if(cB) cB.classList.add('correct');
+              
+              if (oppP && oppP.a && d.ansTimer) {
+                  $('ui-combat-status').textContent = "⚠️ 對手已作答，請在 10 秒內完成指令！"; 
+                  $('ui-combat-status').style.color = "var(--neon-magenta)";
               } else {
-                  $('ui-combat-status').textContent = "等待對手回應..."; $('ui-combat-status').style.color = "var(--neon-magenta)";
+                  $('ui-combat-status').textContent = "等待輸入指令..."; 
+                  $('ui-combat-status').style.color = "var(--neon-cyan)";
               }
+          }
+          
+          if(myP && myP.a) {
+              // 鎖定自己的按鈕，移除可能殘留的狀態
+              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) { b.disabled=true; b.classList.remove('selected', 'correct', 'wrong'); } });
+              let mB = $(`mp-opt-${myP.v}`);
+              
+              // 雙方皆已作答，顯示正確與否的結果
+              if(oppP && oppP.a) {
+                  $('ui-combat-status').textContent = "處理下一回合資料..."; 
+                  $('ui-combat-status').style.color = "var(--neon-yellow)";
+                  
+                  if(mB) {
+                      mB.classList.remove('selected');
+                      mB.classList.add(myP.v===q.ans ? 'correct':'wrong');
+                  }
+                  let cB = $(`mp-opt-${q.ans}`); if(cB) cB.classList.add('correct'); // 提示正確答案
+              } else {
+                  // 自己作答了，但對手還沒，僅標示「已選擇」
+                  $('ui-combat-status').textContent = "你已作答，等待對手回應 (限時 10 秒)..."; 
+                  $('ui-combat-status').style.color = "var(--neon-cyan)";
+                  if(mB) mB.classList.add('selected'); 
+              }
+          } else if(myP && !myP.a) {
+              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) { b.disabled=false; b.classList.remove('correct', 'wrong', 'selected'); } });
           }
       } else if (d.stat === 'fin') {
           $('arena-combat').style.display='none'; $('arena-result').style.display='block';
@@ -1022,11 +1120,14 @@ body {
 
       [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); 
       
-      // 本地搶先預先顯示 UI，帶來無延遲錯覺
+      let mB = $(`mp-opt-${val}`);
+      if(mB) mB.classList.add('selected');
+
+      // 本地搶先預先顯示 UI (已選擇狀態)，但不顯示對錯
       netState[pKey].a = true; netState[pKey].v = val;
       pushNetUpdate();
 
-      // 將答案寫回 Firebase，通知老師計算
+      // 將答案寫回 Firebase，通知老師計算 (也觸發 10秒倒數若為首位作答者)
       db.ref('tacterm_rooms/' + adminTourCode + '/answers/' + myId).set(val);
   };
 
@@ -1035,20 +1136,18 @@ body {
   // 4. UI 渲染功能 (賽事樹狀圖)
   // =========================================
   
-  // (老師端) 踢除選手功能，會寫入 Firebase 通知該名學生退出
   window.delTrnPlayer = (e, mI, pK) => { 
       e.stopPropagation(); 
       if(trnData[mI].stat !== 'wait') return sysNotify('錯誤: 賽事已開始'); 
       
       let studentId = trnData[mI][pK].id;
-      // 只要不是虛擬對手 (b_開頭)，就在資料庫標記他被踢了
       if(studentId && !studentId.startsWith('b_')) {
           db.ref('tacterm_rooms/' + adminTourCode + '/kicked/' + studentId).set(true);
       }
       
       trnData[mI][pK].id = null; trnData[mI][pK].n = ''; 
       renderBracketUI(); 
-      broadcastSync(); // 同步給所有人名單更新
+      broadcastSync(); 
       sysNotify('已將選手移出槽位');
   };
   
@@ -1065,7 +1164,6 @@ body {
               ['p1','p2'].forEach(pK => {
                   let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
                   if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
-                  // 點擊 X 觸發踢人
                   let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
                   slt.innerHTML = `${m[pK].n||(m[pK].e?'等待加入...':'未定...') } ${btn}`;
                   slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
