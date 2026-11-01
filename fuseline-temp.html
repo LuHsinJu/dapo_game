@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆-測試</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -486,7 +486,7 @@ body {
                         </div>
                     </div>
                     <table class="lb-table font-cyber">
-                        <thead><tr><th>排名</th><th>特務代號</th><th>正確題數</th><th>總作答數</th><th>正確率</th></tr></thead>
+                        <thead><tr><th>排名</th><th>特務代號</th><th>正確題數</th><th>總作答數</th><th>正確率</th><th>管理</th></tr></thead>
                         <tbody id="admin-lb-tbody">
                         </tbody>
                     </table>
@@ -498,6 +498,7 @@ body {
                             <option value="DE">雙淘汰</option>
                         </select>
                         <button class="btn-cyber yellow" onclick="genBracketFromLB()"><span>3. 依照排名生成賽程</span></button>
+                        <span style="font-size:12px; color:var(--text-muted);">*亦可跳過資格賽直接生成</span>
                     </div>
                 </div>
                 
@@ -526,7 +527,7 @@ body {
                 </div>
 
                 <div id="admin-bracket-view" style="display:none;">
-                    <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 懸停點擊 ✖ 可剔除學生。點擊開始將直接晉級或對戰。</p>
+                    <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 點擊兩名選手可「交換位置」。懸停點擊 ✖ 可剔除學生。點擊開始將直接晉級或對戰。</p>
                     <div class="bracket-scroll">
                         <svg id="bracket-svg" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(0,240,255,0.4));"></svg>
                         <div id="bracket-cols" style="display: flex; gap: 50px; position: relative; z-index: 10;"></div>
@@ -882,9 +883,17 @@ body {
               <td style="color:var(--neon-green);">${p.correct}</td>
               <td>${p.total}</td>
               <td style="color:var(--neon-yellow);">${acc}%</td>
+              <td><button class="btn-cyber pink" style="padding: 4px 10px; font-size: 12px; border-radius: 4px;" onclick="kickFromLB('${p.id}')">踢除</button></td>
           </tr>`;
       }).join('');
   }
+
+  window.kickFromLB = (pId) => {
+      if(!adminTourCode || !pId) return;
+      db.ref(`tacterm_rooms/${adminTourCode}/leaderboard/${pId}`).remove();
+      db.ref(`tacterm_rooms/${adminTourCode}/kicked/${pId}`).set(true);
+      sysNotify('已剔除該名特務');
+  };
 
   window.genBracketFromLB = () => {
       if(!sortedLB || sortedLB.length === 0) {
@@ -1606,7 +1615,7 @@ body {
                   ['p1','p2'].forEach(pK => {
                       let slt = document.createElement('div'); slt.className = `p-slot ${m[pK].n?'':'empty'} ${m.w===(pK==='p1'?1:2)?'winner':''}`;
                       if(trnSwap.m===i && trnSwap.k===pK) slt.classList.add('selected');
-                      let btn = (m[pK].n && m[pK].e) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
+                      let btn = (m[pK].n) ? `<button class="del-btn" onclick="delTrnPlayer(event, ${i}, '${pK}')">✖</button>`:'';
                       slt.innerHTML = `${m[pK].n||(m[pK].e?'等待加入...':'未定...') } ${btn}`;
                       slt.onclick = () => doTrnSwap(i, pK); box.appendChild(slt);
                   });
@@ -1701,7 +1710,7 @@ body {
 
   function doTrnSwap(mI, pK) {
       if(trnData[mI].stat !== 'wait') return sysNotify('錯誤: 僅能調度未啟動之槽位');
-      if(!trnData[mI][pK].e) return sysNotify('錯誤: 槽位鎖定');
+      
       if(trnSwap.m === -1) trnSwap = {m:mI, k:pK};
       else {
           let m1 = trnSwap.m, k1 = trnSwap.k;
