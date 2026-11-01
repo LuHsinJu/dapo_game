@@ -851,7 +851,7 @@ body {
 
   window.startQualifying = () => {
       if(!adminTourCode) return;
-      let endTime = Date.now() + 120000; // 120秒
+      let endTime = Date.now() + 60000; // 120秒
       db.ref('tacterm_rooms/' + adminTourCode).update({
           phase: 'qualifying',
           qualifyEndTime: endTime
