@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆-測試</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -389,6 +389,8 @@ body {
                         <div style="text-align:center; flex:1;">
                             <div id="ui-p1-name" style="color:var(--neon-cyan); font-weight:900; font-size:14px; margin-bottom:5px;" class="font-cyber">P1</div>
                             <div id="ui-p1-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
+                            <div id="ui-p1-cb" style="color:var(--neon-yellow); font-size:12px; font-weight:700; margin-top:5px;" class="font-cyber">Max CB: 0 | 連擊: 0</div>
+                            <div style="height:4px; background:#222; width:80%; margin: 8px auto 0; border-radius:2px;"><div id="ui-p1-bar" style="height:100%; width:0%; background:var(--neon-cyan); transition:0.3s; box-shadow: 0 0 5px var(--neon-cyan);"></div></div>
                         </div>
                         <div style="padding:0 30px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">
                             <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:10px;" class="font-cyber">第 1 回合 / 共 20 回合</div>
@@ -397,6 +399,8 @@ body {
                         <div style="text-align:center; flex:1;">
                             <div id="ui-p2-name" style="color:var(--neon-magenta); font-weight:900; font-size:14px; margin-bottom:5px;" class="font-cyber">P2</div>
                             <div id="ui-p2-score" style="color:#fff; font-size:36px; font-weight:900;" class="font-cyber">0</div>
+                            <div id="ui-p2-cb" style="color:var(--neon-yellow); font-size:12px; font-weight:700; margin-top:5px;" class="font-cyber">Max CB: 0 | 連擊: 0</div>
+                            <div style="height:4px; background:#222; width:80%; margin: 8px auto 0; border-radius:2px;"><div id="ui-p2-bar" style="height:100%; width:0%; background:var(--neon-magenta); transition:0.3s; box-shadow: 0 0 5px var(--neon-magenta);"></div></div>
                         </div>
                     </div>
                     <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
@@ -450,6 +454,30 @@ body {
                 </div>
                 <p style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:20px;">系統日誌: 學生使用上方專屬密鑰加入。懸停點擊 ✖ 可剔除學生。點擊開始將直接晉級或對戰。</p>
                 
+                <!-- Admin Live View 實況監控 -->
+                <div id="admin-live-view" style="display:none; margin-bottom:30px; border:1px solid var(--neon-magenta); padding:20px; background:rgba(255,0,85,0.05); position:relative;">
+                    <div style="position:absolute; top:-10px; left:20px; background:var(--bg-panel); color:var(--neon-magenta); padding:0 10px; font-size:12px; font-weight:900;" class="font-cyber">LIVE CAM // 實況監控</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <div style="text-align:center; flex:1;">
+                            <div id="alv-p1-name" style="color:var(--neon-cyan); font-weight:900; font-size:16px;">P1</div>
+                            <div id="alv-p1-score" style="font-size:28px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">0</div>
+                            <div id="alv-p1-cb" style="font-size:11px; color:var(--neon-yellow);">Max CB: 0 | 連擊: 0</div>
+                            <div id="alv-p1-status" style="font-size:11px; margin-top:5px; font-weight:900;">等待中</div>
+                        </div>
+                        <div style="text-align:center; padding:0 20px;">
+                            <div id="alv-round" style="font-size:13px; color:var(--text-muted); font-weight:900;" class="font-cyber">第 1 回合</div>
+                            <div id="alv-timer" style="font-size:24px; color:var(--neon-magenta); font-weight:900; margin-top:5px; text-shadow:0 0 10px rgba(255,0,85,0.5);" class="font-cyber"></div>
+                        </div>
+                        <div style="text-align:center; flex:1;">
+                            <div id="alv-p2-name" style="color:var(--neon-magenta); font-weight:900; font-size:16px;">P2</div>
+                            <div id="alv-p2-score" style="font-size:28px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">0</div>
+                            <div id="alv-p2-cb" style="font-size:11px; color:var(--neon-yellow);">Max CB: 0 | 連擊: 0</div>
+                            <div id="alv-p2-status" style="font-size:11px; margin-top:5px; font-weight:900;">等待中</div>
+                        </div>
+                    </div>
+                    <div id="alv-q" style="text-align:center; font-size:15px; font-weight:700; padding:15px; background:rgba(0,0,0,0.5); border-radius:8px; border:1px solid #333; line-height:1.5;">題目同步中...</div>
+                </div>
+
                 <div class="bracket-scroll">
                     <svg id="bracket-svg" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 0; width: 100%; height: 100%; filter: drop-shadow(0 0 5px rgba(0,240,255,0.4));"></svg>
                     <div id="bracket-cols" style="display: flex; gap: 50px; position: relative; z-index: 10;"></div>
@@ -793,6 +821,7 @@ body {
           if (pKey && !netState[pKey].a) {
               netState[pKey].a = true;
               netState[pKey].v = msg.val;
+              netState[pKey].ansTime = Date.now(); // 記錄作答精確時間(毫秒)，用於驟死賽判定
               
               // 若這回合有人搶先作答，啟動 10 秒倒數
               let oppKey = (pKey === 'h') ? 'g' : 'h';
@@ -819,9 +848,9 @@ body {
       }
       let elapsed = (Date.now() - m.timerStart) / 1000;
       if (elapsed >= m.timerDuration) {
-          // 超時！強制作答錯誤
-          if (!m.h.a) { m.h.a = true; m.h.v = -1; }
-          if (!m.g.a) { m.g.a = true; m.g.v = -1; }
+          // 超時！強制作答錯誤並給予極大延遲時間
+          if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = Infinity; }
+          if (!m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = Infinity; }
           clearInterval(window.adminMatchTimer);
           window.adminMatchTimer = null;
           checkAdminMatchNext();
@@ -834,8 +863,47 @@ body {
           bracket: trnData,
           activeMatch: netState || null
       });
+      updateAdminLiveView();
       if (netState && netState.stat === 'play') checkAdminAiTurnAndNext();
   }
+
+  // 老師端更新 Live 監控面板
+  function updateAdminLiveView() {
+      let el = $('admin-live-view');
+      if (!el) return;
+      let d = netState;
+      if (!d || d.stat !== 'play') {
+          el.style.display = 'none';
+          return;
+      }
+      el.style.display = 'block';
+      $('alv-p1-name').textContent = d.h.n;
+      $('alv-p1-score').textContent = d.h.s;
+      $('alv-p1-cb').textContent = `Max CB: ${d.h.maxCb} | 連擊: ${d.h.cb}`;
+      $('alv-p1-status').textContent = d.h.a ? (d.h.v === -1 ? '超時 (失敗)' : '已作答') : '思考中...';
+      $('alv-p1-status').style.color = d.h.a ? (d.h.v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
+
+      $('alv-p2-name').textContent = d.g.n;
+      $('alv-p2-score').textContent = d.g.s;
+      $('alv-p2-cb').textContent = `Max CB: ${d.g.maxCb} | 連擊: ${d.g.cb}`;
+      $('alv-p2-status').textContent = d.g.a ? (d.g.v === -1 ? '超時 (失敗)' : '已作答') : '思考中...';
+      $('alv-p2-status').style.color = d.g.a ? (d.g.v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
+
+      $('alv-round').textContent = d.suddenDeath ? `⚠️ 延長驟死賽 (${d.cIdx+1})` : `第 ${d.cIdx+1} 回合 / 20`;
+      if(d.qs && d.qs[d.cIdx]) $('alv-q').innerHTML = d.qs[d.cIdx].text;
+  }
+  
+  // 老師端 Live 倒數計時動畫
+  setInterval(() => {
+      if(myRole === 'admin' && netState && netState.stat === 'play') {
+          if(netState.timerStart) {
+              let r = netState.timerDuration - (Date.now() - netState.timerStart)/1000;
+              $('alv-timer').textContent = Math.max(0, r).toFixed(1) + 's';
+          } else {
+              $('alv-timer').textContent = '';
+          }
+      }
+  }, 100);
 
   window.runTrnMatch = (mI) => {
       let m = trnData[mI];
@@ -846,10 +914,10 @@ body {
       netState = {
           matchId: mI, stat: 'play', cIdx: 0,
           qs: Array.from({length:20}, getGeoTask), // 調整為 20 回合
-          h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, aiQueued: false},
-          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, aiQueued: false},
-          ansTimer: null,
-          timerStart: null, timerDuration: 10
+          h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, aiQueued: false, ansTime: 0},
+          g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, aiQueued: false, ansTime: 0},
+          timerStart: null, timerDuration: 10,
+          suddenDeath: false, sdWinner: 0
       };
       m.stat = 'play';
       renderBracketUI();
@@ -869,18 +937,69 @@ body {
               if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
               m.timerStart = null;
               
-              if (m.h.v === m.qs[m.cIdx].ans) m.h.s += 100;
-              if (m.g.v === m.qs[m.cIdx].ans) m.g.s += 100;
+              let hAns = m.h.v === m.qs[m.cIdx].ans;
+              let gAns = m.g.v === m.qs[m.cIdx].ans;
+
+              // 連擊與分數計算
+              if (hAns) { m.h.s += 100; m.h.cb++; m.h.maxCb = Math.max(m.h.maxCb, m.h.cb); }
+              else { m.h.cb = 0; }
+
+              if (gAns) { m.g.s += 100; m.g.cb++; m.g.maxCb = Math.max(m.g.maxCb, m.g.cb); }
+              else { m.g.cb = 0; }
+
+              // 若處於驟死賽，計算單局勝負 (極速判定)
+              if (m.suddenDeath) {
+                  if (hAns && !gAns) m.sdWinner = 1;
+                  else if (gAns && !hAns) m.sdWinner = 2;
+                  else if (hAns && gAns) {
+                      // 雙方皆對，比速度！
+                      m.sdWinner = (m.h.ansTime <= m.g.ansTime) ? 1 : 2;
+                  }
+                  // 若雙方皆錯，sdWinner 依然是 0，繼續下一題驟死
+              }
               
               broadcastSync(); // 同步，此時雙方 a=true，客戶端會顯示正確答案
               
               setTimeout(() => {
-                  m.cIdx++;
-                  if (m.cIdx >= 20) { // 20回合結束
-                      m.stat = 'fin'; let bMatch = trnData[m.matchId]; bMatch.stat = 'fin';
-                      if (m.h.s === m.g.s) m.h.s += (Math.random()>0.5 ? 1 : -1);
-                      bMatch.w = (m.h.s > m.g.s) ? 1 : 2; 
-                      let wO = bMatch.w === 1 ? bMatch.p1 : bMatch.p2;
+                  let matchEnded = false;
+                  let winner = 0;
+
+                  if (m.suddenDeath) {
+                      if (m.sdWinner !== 0) {
+                          matchEnded = true;
+                          winner = m.sdWinner;
+                      } else {
+                          // 雙方皆錯，延長驟死賽，追加題目
+                          m.cIdx++;
+                          m.qs.push(getGeoTask());
+                      }
+                  } else {
+                      m.cIdx++;
+                      if (m.cIdx >= 20) { // 20回合結束
+                          if (m.h.s > m.g.s) { matchEnded = true; winner = 1; }
+                          else if (m.g.s > m.h.s) { matchEnded = true; winner = 2; }
+                          else {
+                              // 分數相同，比對最大連擊數
+                              if (m.h.maxCb > m.g.maxCb) { matchEnded = true; winner = 1; }
+                              else if (m.g.maxCb > m.h.maxCb) { matchEnded = true; winner = 2; }
+                              else {
+                                  // 連擊數也相同，進入延長驟死賽！追加一題並繼續
+                                  m.suddenDeath = true;
+                                  m.qs.push(getGeoTask());
+                                  sysNotify("⚠️ 雙方同分且同連擊，進入延長驟死賽！");
+                              }
+                          }
+                      }
+                  }
+
+                  if (matchEnded) {
+                      m.stat = 'fin'; 
+                      m.winner = winner; // 傳遞給客戶端
+                      let bMatch = trnData[m.matchId]; 
+                      bMatch.stat = 'fin';
+                      bMatch.w = winner; 
+                      
+                      let wO = winner === 1 ? bMatch.p1 : bMatch.p2;
                       sysNotify(`獲勝晉級者: ${wO.n}`);
                       let cRI = trnRounds.findIndex(rnd => m.matchId >= rnd[0] && m.matchId < rnd[1]);
                       if(cRI !== -1 && cRI < trnRounds.length - 1) {
@@ -890,9 +1009,11 @@ body {
                       }
                       renderBracketUI();
                   } else {
-                      m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false; m.ansTimer = null;
-                      m.timerStart = null;
+                      m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
+                      m.h.ansTime = 0; m.g.ansTime = 0;
+                      m.ansTimer = null; m.timerStart = null;
                   }
+                  
                   broadcastSync();
                   window.adminProcessingMatch = false;
               }, 2500); // 給予 2.5 秒顯示正確答案結果
@@ -1028,8 +1149,21 @@ body {
           $('arena-result').style.display='none';
           
           $('ui-p1-name').textContent = d.h.n; $('ui-p1-score').textContent = d.h.s;
+          $('ui-p1-cb').textContent = `Max CB: ${d.h.maxCb} | 連擊: ${d.h.cb}`;
           $('ui-p2-name').textContent = d.g.n; $('ui-p2-score').textContent = d.g.s;
-          $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 20 回合`;
+          $('ui-p2-cb').textContent = `Max CB: ${d.g.maxCb} | 連擊: ${d.g.cb}`;
+          
+          if(d.suddenDeath) {
+              $('ui-round-num').textContent = `⚠️ 延長驟死賽 ⚠️ (回合 ${d.cIdx + 1})`;
+              $('ui-round-num').style.color = "var(--neon-magenta)";
+          } else {
+              $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 20 回合`;
+              $('ui-round-num').style.color = "var(--text-muted)";
+          }
+
+          // 更新進度條長度 (滿分 2000 分)
+          $('ui-p1-bar').style.width = Math.min(100, (d.h.s / 2000) * 100) + '%';
+          $('ui-p2-bar').style.width = Math.min(100, (d.g.s / 2000) * 100) + '%';
 
           let myP = (d.h.id === myId) ? d.h : (d.g.id === myId ? d.g : null);
           let oppP = (d.h.id === myId) ? d.g : (d.h);
@@ -1055,7 +1189,8 @@ body {
           }
 
           if(myP && !myP.a) {
-              $('ui-combat-q').innerHTML = q.text;
+              // 修復排版：利用 <div> 包覆文字，防止 flex 將換行標籤與標點符號打散
+              $('ui-combat-q').innerHTML = '<div>' + q.text + '</div>';
               $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
               
               if (oppP && oppP.a && d.ansTimer) {
@@ -1096,13 +1231,17 @@ body {
           $('ui-res-p1n').textContent = d.h.n; $('ui-res-p1s').textContent = d.h.s;
           $('ui-res-p2n').textContent = d.g.n; $('ui-res-p2s').textContent = d.g.s;
           
-          let myScore = (d.h.id === myId) ? d.h.s : d.g.s;
-          let oppScore = (d.h.id === myId) ? d.g.s : d.h.s;
+          let isP1 = (d.h.id === myId);
           let t = $('ui-res-title');
           
-          if(myScore > oppScore){ t.textContent="勝利"; t.style.color="var(--neon-cyan)"; t.style.textShadow="0 0 20px rgba(0,240,255,0.5)";}
-          else if(myScore < oppScore){ t.textContent="落敗"; t.style.color="var(--neon-magenta)"; t.style.textShadow="0 0 20px rgba(255,0,85,0.5)";}
-          else { t.textContent="平手"; t.style.color="#fff"; t.style.textShadow="none";}
+          // 使用系統判定之晉級者來決定是否獲勝
+          let iWon = (isP1 && d.winner === 1) || (!isP1 && d.winner === 2);
+          let isTie = (d.h.s === d.g.s);
+          let winText = isTie ? (d.suddenDeath ? "極速絕殺 (驟死賽)" : "險勝 (連擊優勢)") : "勝利";
+          let loseText = isTie ? (d.suddenDeath ? "惜敗 (手速太慢)" : "惜敗 (連擊劣勢)") : "落敗";
+          
+          if(iWon){ t.textContent = winText; t.style.color="var(--neon-cyan)"; t.style.textShadow="0 0 20px rgba(0,240,255,0.5)";}
+          else { t.textContent = loseText; t.style.color="var(--neon-magenta)"; t.style.textShadow="0 0 20px rgba(255,0,85,0.5)";}
           
           let btnRet = $('btn-return-lobby');
           btnRet.innerHTML = "<span>返回 // 大廳等待晉級</span>";
