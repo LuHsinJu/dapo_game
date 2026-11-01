@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆-測試</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -412,7 +412,8 @@ body {
                             <div style="height:4px; background:#222; width:80%; margin: 8px auto 0; border-radius:2px;"><div id="ui-p1-bar" style="height:100%; width:0%; background:var(--neon-cyan); transition:0.3s; box-shadow: 0 0 5px var(--neon-cyan);"></div></div>
                         </div>
                         <div style="padding:0 30px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">
-                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:10px;" class="font-cyber">第 1 回合 / 共 20 回合</div>
+                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:5px;" class="font-cyber">第 1 回合 / 共 20 回合</div>
+                            <div id="ui-global-timer-txt" style="font-size:18px; color:var(--neon-green); font-weight:900; margin-bottom:5px; text-shadow:0 0 5px var(--neon-green);" class="font-cyber">04:00</div>
                             <div style="font-size:24px; color:#444; font-weight:900; font-style:italic;" class="font-cyber">VS</div>
                         </div>
                         <div style="text-align:center; flex:1;">
@@ -422,6 +423,12 @@ body {
                             <div style="height:4px; background:#222; width:80%; margin: 8px auto 0; border-radius:2px;"><div id="ui-p2-bar" style="height:100%; width:0%; background:var(--neon-magenta); transition:0.3s; box-shadow: 0 0 5px var(--neon-magenta);"></div></div>
                         </div>
                     </div>
+                    
+                    <!-- 全局比賽倒數計時器 -->
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <div id="ui-combat-global-timer" style="font-size:24px; color:var(--neon-yellow); font-weight:900; letter-spacing:4px; text-shadow:0 0 10px rgba(255,230,0,0.5);" class="font-cyber">04:00</div>
+                    </div>
+                    
                     <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
                     
                     <!-- 搶答倒數計時器 -->
@@ -799,7 +806,9 @@ body {
       netState = null;
       if(window.roomListenerUnsubscribe) { window.roomListenerUnsubscribe(); window.roomListenerUnsubscribe = null; }
       if(window.clientTimerInt) { clearInterval(window.clientTimerInt); window.clientTimerInt = null; }
+      if(window.clientGlobalTimerInt) { clearInterval(window.clientGlobalTimerInt); window.clientGlobalTimerInt = null; }
       if(window.aqInt) { clearInterval(window.aqInt); window.aqInt = null; }
+      if(window.adminGlobalTimer) { clearInterval(window.adminGlobalTimer); window.adminGlobalTimer = null; }
   }
 
   // --- (老師端) 生成全新賽事 ---
@@ -1036,8 +1045,8 @@ body {
       }
       let elapsed = (Date.now() - m.timerStart) / 1000;
       if (elapsed >= m.timerDuration) {
-          if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = Infinity; }
-          if (!m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = Infinity; }
+          if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = 9999999999999; }
+          if (!m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = 9999999999999; }
           clearInterval(window.adminMatchTimer);
           window.adminMatchTimer = null;
           checkAdminMatchNext();
@@ -1085,12 +1094,7 @@ body {
               let r = netState.timerDuration - (Date.now() - netState.timerStart)/1000;
               $('alv-timer').textContent = Math.max(0, r).toFixed(1) + 's';
           } else {
-              $('alv-timer').textContent = '';
-          }
-      }
-  }, 100);
-
-  window.runTrnMatch = (mI) => {
+      window.runTrnMatch = (mI) => {
       let m = trnData[mI];
       
       // 自動判定對手從缺而晉級
@@ -1113,6 +1117,7 @@ body {
       if (!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
       
       if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
+      if (window.adminGlobalTimer) { clearInterval(window.adminGlobalTimer); window.adminGlobalTimer = null; }
       
       netState = {
           matchId: mI, stat: 'play', cIdx: 0,
@@ -1120,11 +1125,32 @@ body {
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           timerStart: null, timerDuration: 10,
-          suddenDeath: false, sdWinner: 0
+          suddenDeath: false, sdWinner: 0,
+          matchStartTime: Date.now(), isTimeUp: false
       };
+
+      // 全局 4 分鐘計時器 (240秒)
+      window.adminGlobalTimer = setInterval(() => {
+          let st = netState;
+          if (!st || st.stat !== 'play') {
+              clearInterval(window.adminGlobalTimer);
+              return;
+          }
+          if (st.suddenDeath || st.isTimeUp) return; // 驟死賽不限時
+          let elapsed = (Date.now() - st.matchStartTime) / 1000;
+          if (elapsed >= 240) {
+              st.isTimeUp = true;
+              sysNotify("4分鐘時間到！正在強制結算當前比分...");
+              if (!st.h.a) { st.h.a = true; st.h.v = -1; st.h.ansTime = 9999999999999; }
+              if (!st.g.a) { st.g.a = true; st.g.v = -1; st.g.ansTime = 9999999999999; }
+              if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
+              checkAdminMatchNext();
+          }
+      }, 1000);
+
       m.stat = 'play';
       renderBracketUI();
-      sysNotify(`M${mI+1} 對局開始 (共20回合)`);
+      sysNotify(`M${mI+1} 對局開始 (共20回合/限時4分)`);
       broadcastSync();
   };
 
@@ -1169,7 +1195,7 @@ body {
                       }
                   } else {
                       m.cIdx++;
-                      if (m.cIdx >= 20) { 
+                      if (m.cIdx >= 20 || m.isTimeUp) { 
                           if (m.h.s > m.g.s) { matchEnded = true; winner = 1; }
                           else if (m.g.s > m.h.s) { matchEnded = true; winner = 2; }
                           else {
@@ -1177,6 +1203,7 @@ body {
                               else if (m.g.maxCb > m.h.maxCb) { matchEnded = true; winner = 2; }
                               else {
                                   m.suddenDeath = true;
+                                  m.isTimeUp = false; // 重置時間到狀態，避免重複觸發
                                   m.qs.push(getGeoTask());
                                   sysNotify("⚠️ 雙方同分且同連擊，進入延長驟死賽！");
                               }
@@ -1368,9 +1395,57 @@ body {
           $('ui-p1-bar').style.width = Math.min(100, (d.h.s / 2000) * 100) + '%';
           $('ui-p2-bar').style.width = Math.min(100, (d.g.s / 2000) * 100) + '%';
 
+          // 處理全局計時顯示
+          if (!window.clientGlobalTimerInt) {
+              window.clientGlobalTimerInt = setInterval(() => {
+                  let st = netState;
+                  if(!st || st.stat !== 'play' || !st.matchStartTime) {
+                      clearInterval(window.clientGlobalTimerInt); window.clientGlobalTimerInt = null;
+                      return;
+                  }
+                  if(st.suddenDeath) {
+                      $('ui-combat-global-timer').textContent = "⚠️ 延長賽 (驟死模式) ⚠️";
+                      $('ui-combat-global-timer').style.color = "var(--neon-magenta)";
+                  } else {
+                      let remain = 240 - (Date.now() - st.matchStartTime)/1000;
+                      if (remain < 0) remain = 0;
+                      let min = String(Math.floor(remain/60)).padStart(2,'0');
+                      let sec = String(Math.floor(remain%60)).padStart(2,'0');
+                      $('ui-combat-global-timer').textContent = `${min}:${sec}`;
+                      $('ui-combat-global-timer').style.color = remain <= 30 ? "var(--neon-magenta)" : "var(--neon-yellow)";
+                  }
+              }, 250);
+          }
+
           let myP = (d.h.id === myId) ? d.h : (d.g.id === myId ? d.g : null);
           let oppP = (d.h.id === myId) ? d.g : (d.h);
           let q = d.qs[d.cIdx];
+          
+          // 4分鐘大限計時顯示
+          if (d.matchStartTime) {
+              if (!window.clientGlobalTimerInt) {
+                  window.clientGlobalTimerInt = setInterval(() => {
+                      if(!netState || netState.stat !== 'play' || !netState.matchStartTime) {
+                          clearInterval(window.clientGlobalTimerInt); window.clientGlobalTimerInt = null;
+                          return;
+                      }
+                      let remain = netState.matchDuration - (Date.now() - netState.matchStartTime)/1000;
+                      if (remain < 0) remain = 0;
+                      let m = String(Math.floor(remain / 60)).padStart(2, '0');
+                      let s = String(Math.floor(remain % 60)).padStart(2, '0');
+                      $('ui-global-timer-txt').textContent = `${m}:${s}`;
+                      
+                      if (remain <= 60) {
+                          $('ui-global-timer-txt').style.color = 'var(--neon-yellow)';
+                          $('ui-global-timer-txt').style.textShadow = '0 0 5px var(--neon-yellow)';
+                      }
+                      if (remain <= 10) {
+                          $('ui-global-timer-txt').style.color = 'var(--neon-magenta)';
+                          $('ui-global-timer-txt').style.textShadow = '0 0 5px var(--neon-magenta)';
+                      }
+                  }, 1000);
+              }
+          }
 
           // 處理倒數計時顯示
           if (d.timerStart && (!d.h.a || !d.g.a)) {
@@ -1440,8 +1515,17 @@ body {
           // 使用系統判定之晉級者來決定是否獲勝
           let iWon = (isP1 && d.winner === 1) || (!isP1 && d.winner === 2);
           let isTie = (d.h.s === d.g.s);
-          let winText = isTie ? (d.suddenDeath ? "極速絕殺 (驟死賽)" : "險勝 (連擊優勢)") : "勝利";
-          let loseText = isTie ? (d.suddenDeath ? "惜敗 (手速太慢)" : "惜敗 (連擊劣勢)") : "落敗";
+          
+          let winText = "勝利";
+          let loseText = "落敗";
+          
+          if (d.suddenDeath) {
+              winText = "極速絕殺 (驟死賽)"; loseText = "惜敗 (手速太慢)";
+          } else if (isTie) {
+              winText = "險勝 (連擊優勢)"; loseText = "惜敗 (連擊劣勢)";
+          } else if (d.isTimeUp) {
+              winText = "時間到 // 勝利"; loseText = "時間到 // 落敗";
+          }
           
           if(iWon){ t.textContent = winText; t.style.color="var(--neon-cyan)"; t.style.textShadow="0 0 20px rgba(0,240,255,0.5)";}
           else { t.textContent = loseText; t.style.color="var(--neon-magenta)"; t.style.textShadow="0 0 20px rgba(255,0,85,0.5)";}
