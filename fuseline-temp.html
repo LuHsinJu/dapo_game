@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆-測試</title>
+<title>導火線：切點引爆</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -392,7 +392,7 @@ body {
                 <!-- 資格賽特訓畫面 -->
                 <div id="arena-qualify" style="display:none;" class="quiz-box">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;" class="font-cyber">
-                        <span style="color:var(--neon-magenta); font-weight:900;" id="aq-timer-txt">剩餘時間: 120s</span>
+                        <span style="color:var(--neon-magenta); font-weight:900;" id="aq-timer-txt">剩餘時間: --s</span>
                         <span style="color:var(--neon-cyan); font-weight:900;" id="aq-stats">正確: 0 / 總計: 0 (0%)</span>
                     </div>
                     <div style="height:6px; background:#222; margin-bottom:40px; position:relative;">
@@ -412,8 +412,8 @@ body {
                             <div style="height:4px; background:#222; width:80%; margin: 8px auto 0; border-radius:2px;"><div id="ui-p1-bar" style="height:100%; width:0%; background:var(--neon-cyan); transition:0.3s; box-shadow: 0 0 5px var(--neon-cyan);"></div></div>
                         </div>
                         <div style="padding:0 30px; text-align:center; border-left:1px solid #333; border-right:1px solid #333;">
-                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:5px;" class="font-cyber">第 1 回合 / 共 20 回合</div>
-                            <div id="ui-global-timer-txt" style="font-size:18px; color:var(--neon-green); font-weight:900; margin-bottom:5px; text-shadow:0 0 5px var(--neon-green);" class="font-cyber">04:00</div>
+                            <div id="ui-round-num" style="font-size:12px; color:var(--text-muted); font-weight:900; margin-bottom:5px;" class="font-cyber">準備中...</div>
+                            <div id="ui-global-timer-txt" style="font-size:18px; color:var(--neon-green); font-weight:900; margin-bottom:5px; text-shadow:0 0 5px var(--neon-green);" class="font-cyber">--:--</div>
                             <div style="font-size:24px; color:#444; font-weight:900; font-style:italic;" class="font-cyber">VS</div>
                         </div>
                         <div style="text-align:center; flex:1;">
@@ -426,7 +426,7 @@ body {
                     
                     <!-- 全局比賽倒數計時器 -->
                     <div style="text-align:center; margin-bottom:20px;">
-                        <div id="ui-combat-global-timer" style="font-size:24px; color:var(--neon-yellow); font-weight:900; letter-spacing:4px; text-shadow:0 0 10px rgba(255,230,0,0.5);" class="font-cyber">04:00</div>
+                        <div id="ui-combat-global-timer" style="font-size:24px; color:var(--neon-yellow); font-weight:900; letter-spacing:4px; text-shadow:0 0 10px rgba(255,230,0,0.5);" class="font-cyber">--:--</div>
                     </div>
                     
                     <div id="ui-combat-q" class="q-text" style="min-height:120px; display:flex; align-items:center; justify-content:center;">資料同步中...</div>
@@ -482,7 +482,7 @@ body {
                         <h3 class="font-cyber" style="margin:0; color:var(--neon-cyan);">資格賽大廳 (Qualifying)</h3>
                         <div style="display:flex; gap:10px; align-items:center;">
                             <span id="admin-q-timer" style="color:var(--neon-magenta); font-size:24px; font-weight:900;" class="font-cyber">00:00</span>
-                            <button class="btn-cyber pink" onclick="startQualifying()"><span>2. 開始資格賽 (120s)</span></button>
+                            <button class="btn-cyber pink" onclick="startQualifying()"><span>2. 開始資格賽</span></button>
                         </div>
                     </div>
                     <table class="lb-table font-cyber">
@@ -785,6 +785,15 @@ body {
   let netState = null;
   let adminTourCode = null;
   
+  // ==========================================
+  // ⚙️ 遊戲參數設定區 (可在此自由修改秒數與回合數)
+  // ==========================================
+  const GAME_CFG = {
+      qualifyTime: 120,  // 第一局：資格賽總時間 (預設 120 秒)
+      matchRounds: 20,   // 第二局：排位賽總回合數 (預設 20 回)
+      matchTime: 240     // 第二局：排位賽總時間限制 (預設 240 秒，即 4 分鐘)
+  };
+
   // 新增資格賽專用變數
   let qualifyPlayers = {}; 
   let qClientTimer = null;
@@ -851,12 +860,12 @@ body {
 
   window.startQualifying = () => {
       if(!adminTourCode) return;
-      let endTime = Date.now() + 60000; // 120秒
+      let endTime = Date.now() + (GAME_CFG.qualifyTime * 1000); 
       db.ref('tacterm_rooms/' + adminTourCode).update({
           phase: 'qualifying',
           qualifyEndTime: endTime
       });
-      sysNotify("資格賽已啟動！(120秒)");
+      sysNotify(`資格賽已啟動！(${GAME_CFG.qualifyTime}秒)`);
   };
 
   let sortedLB = [];
@@ -1093,7 +1102,7 @@ body {
       $('alv-p2-status').textContent = d.g.a ? (d.g.v === -1 ? '超時 (失敗)' : '已作答') : '思考中...';
       $('alv-p2-status').style.color = d.g.a ? (d.g.v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
 
-      $('alv-round').textContent = d.suddenDeath ? `⚠️ 延長驟死賽 (${d.cIdx+1})` : `第 ${d.cIdx+1} 回合 / 20`;
+      $('alv-round').textContent = d.suddenDeath ? `⚠️ 延長驟死賽 (${d.cIdx+1})` : `第 ${d.cIdx+1} 回合 / ${GAME_CFG.matchRounds}`;
       if(d.qs && d.qs[d.cIdx]) $('alv-q').innerHTML = d.qs[d.cIdx].text;
   }
   
@@ -1135,7 +1144,7 @@ body {
       
       netState = {
           matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length:20}, getGeoTask),
+          qs: Array.from({length: GAME_CFG.matchRounds}, getGeoTask),
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           timerStart: null, timerDuration: 10,
@@ -1152,9 +1161,9 @@ body {
           }
           if (st.suddenDeath || st.isTimeUp) return; // 驟死賽不限時
           let elapsed = (Date.now() - st.matchStartTime) / 1000;
-          if (elapsed >= 240) {
+          if (elapsed >= GAME_CFG.matchTime) {
               st.isTimeUp = true;
-              sysNotify("4分鐘時間到！正在強制結算當前比分...");
+              sysNotify("時間到！正在強制結算當前比分...");
               if (!st.h.a) { st.h.a = true; st.h.v = -1; st.h.ansTime = 9999999999999; }
               if (!st.g.a) { st.g.a = true; st.g.v = -1; st.g.ansTime = 9999999999999; }
               if (window.adminMatchTimer) { clearInterval(window.adminMatchTimer); window.adminMatchTimer = null; }
@@ -1164,7 +1173,7 @@ body {
 
       m.stat = 'play';
       renderBracketUI();
-      sysNotify(`M${mI+1} 對局開始 (共20回合/限時4分)`);
+      sysNotify(`M${mI+1} 對局開始 (共${GAME_CFG.matchRounds}回合/限時${GAME_CFG.matchTime/60}分)`);
       broadcastSync();
   };
 
@@ -1209,7 +1218,7 @@ body {
                       }
                   } else {
                       m.cIdx++;
-                      if (m.cIdx >= 20 || m.isTimeUp) { 
+                      if (m.cIdx >= GAME_CFG.matchRounds || m.isTimeUp) { 
                           if (m.h.s > m.g.s) { matchEnded = true; winner = 1; }
                           else if (m.g.s > m.h.s) { matchEnded = true; winner = 2; }
                           else {
@@ -1401,7 +1410,7 @@ body {
               $('ui-round-num').textContent = `⚠️ 延長驟死賽 ⚠️ (回合 ${d.cIdx + 1})`;
               $('ui-round-num').style.color = "var(--neon-magenta)";
           } else {
-              $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 20 回合`;
+              $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 ${GAME_CFG.matchRounds} 回合`;
               $('ui-round-num').style.color = "var(--text-muted)";
           }
 
@@ -1421,7 +1430,7 @@ body {
                       $('ui-combat-global-timer').textContent = "⚠️ 延長賽 (驟死模式) ⚠️";
                       $('ui-combat-global-timer').style.color = "var(--neon-magenta)";
                   } else {
-                      let remain = 240 - (Date.now() - st.matchStartTime)/1000;
+                      let remain = GAME_CFG.matchTime - (Date.now() - st.matchStartTime)/1000;
                       if (remain < 0) remain = 0;
                       let min = String(Math.floor(remain/60)).padStart(2,'0');
                       let sec = String(Math.floor(remain%60)).padStart(2,'0');
@@ -1443,7 +1452,7 @@ body {
                           clearInterval(window.clientGlobalTimerInt); window.clientGlobalTimerInt = null;
                           return;
                       }
-                      let remain = netState.matchDuration - (Date.now() - netState.matchStartTime)/1000;
+                      let remain = GAME_CFG.matchTime - (Date.now() - netState.matchStartTime)/1000;
                       if (remain < 0) remain = 0;
                       let m = String(Math.floor(remain / 60)).padStart(2, '0');
                       let s = String(Math.floor(remain % 60)).padStart(2, '0');
@@ -1667,7 +1676,7 @@ body {
           let sX = r1.right - cRect.left + con.scrollLeft;
           let sY = r1.top + r1.height / 2 - cRect.top + con.scrollTop;
 
-          // 1. 勝部晉級線 (Cyan - Solid)
+          // 1. 勝部晉級線 (黃色：未完成為虛線，已完成為實線)
           if (m.nextW) {
               let b2 = $(`mc-${m.nextW.id}`);
               if (b2 && b2.style.visibility !== 'hidden') {
@@ -1678,14 +1687,24 @@ body {
                   let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
                   let mX = sX + Math.abs(eX - sX) / 2;
                   p.setAttribute('d', `M ${sX} ${sY} C ${mX} ${sY}, ${mX} ${eY}, ${eX} ${eY}`);
-                  p.setAttribute('stroke', 'var(--border-color)'); 
+                  p.setAttribute('stroke', 'var(--neon-yellow)'); 
                   p.setAttribute('stroke-width', '2'); 
                   p.setAttribute('fill', 'transparent');
+                  
+                  if (m.stat !== 'fin') {
+                      // 未完賽：半透明黃色虛線
+                      p.setAttribute('stroke-dasharray', '6 6'); 
+                      p.setAttribute('opacity', '0.5'); 
+                  } else {
+                      // 已完賽晉級：高亮黃色實線
+                      p.setAttribute('opacity', '1');
+                  }
+                  
                   svg.appendChild(p);
               }
           }
           
-          // 2. 敗部轉移線 (Magenta - Dotted)
+          // 2. 敗部轉移線 (粉色：未完成為虛線，已跌落為實線)
           if (m.nextL) {
               let b3 = $(`mc-${m.nextL.id}`);
               if (b3 && b3.style.visibility !== 'hidden') {
@@ -1694,17 +1713,53 @@ body {
                   let eY = r3.top + r3.height * (m.nextL.k === 'p1' ? 0.25 : 0.75) - cRect.top + con.scrollTop;
                   
                   let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                  // 敗部線特別設計為帶有迴圈弧度的折返線，以適應由上往下的區塊轉移
+                  // 敗部線特別設計為帶有迴圈弧度的折返線
                   p.setAttribute('d', `M ${sX} ${sY} C ${sX + 80} ${sY}, ${eX - 80} ${eY}, ${eX} ${eY}`);
                   p.setAttribute('stroke', 'var(--neon-magenta)'); 
                   p.setAttribute('stroke-width', '1.5'); 
-                  p.setAttribute('stroke-dasharray', '4 4'); 
                   p.setAttribute('fill', 'transparent');
-                  p.setAttribute('opacity', '0.4'); // 稍微透明以免干擾主線
+                  
+                  if (m.stat !== 'fin') {
+                      p.setAttribute('stroke-dasharray', '4 4'); 
+                      p.setAttribute('opacity', '0.4'); 
+                  } else {
+                      p.setAttribute('opacity', '0.8'); 
+                  }
+                  
                   svg.appendChild(p);
               }
           }
       });
+
+      // 3. 單淘汰賽制通往「總冠軍」的連線
+      if (tourType === 'SE') {
+          let lastMatch = trnData[trnData.length - 1];
+          if (lastMatch && !lastMatch.isB) {
+              let b1 = $(`mc-${lastMatch.id}`);
+              let bChamp = $('mc-champ');
+              if (b1 && bChamp && b1.style.visibility !== 'hidden') {
+                  let r1 = b1.getBoundingClientRect();
+                  let rC = bChamp.getBoundingClientRect();
+                  let sX = r1.right - cRect.left + con.scrollLeft;
+                  let sY = r1.top + r1.height / 2 - cRect.top + con.scrollTop;
+                  let eX = rC.left - cRect.left + con.scrollLeft;
+                  let eY = rC.top + rC.height / 2 - cRect.top + con.scrollTop;
+                  
+                  let p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                  let mX = sX + Math.abs(eX - sX) / 2;
+                  p.setAttribute('d', `M ${sX} ${sY} C ${mX} ${sY}, ${mX} ${eY}, ${eX} ${eY}`);
+                  p.setAttribute('stroke', 'var(--neon-yellow)');
+                  p.setAttribute('stroke-width', '2');
+                  p.setAttribute('fill', 'transparent');
+                  
+                  if (lastMatch.stat !== 'fin') {
+                      p.setAttribute('stroke-dasharray', '6 6');
+                      p.setAttribute('opacity', '0.5');
+                  }
+                  svg.appendChild(p);
+              }
+          }
+      }
   }
   window.addEventListener('resize', ()=>{ if($('view-admin').classList.contains('active')) drawBracketPaths(); });
 
