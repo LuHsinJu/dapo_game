@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆-測試</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -546,7 +546,8 @@ body {
   window.openAuth = () => { $('auth-overlay').classList.add('show'); $('inp-admin-pwd').value=''; $('inp-admin-pwd').focus(); };
   window.closeAuth = () => { $('auth-overlay').classList.remove('show'); };
   window.verifyAdmin = () => {
-      if($('inp-admin-pwd').value === '1234'){ 
+      // 加上 trim() 避免輸入空白導致崩潰
+      if($('inp-admin-pwd').value.trim() === '1234'){ 
           closeAuth(); 
           $('nav-login').style.display = 'none'; $('nav-admin').style.display = 'flex';
           switchTab('admin'); 
@@ -1058,9 +1059,6 @@ body {
               broadcastSync(); // 同步，此時雙方 a=true，客戶端會顯示正確答案
               
               setTimeout(() => {
-              broadcastSync(); 
-              
-              setTimeout(() => {
                   let matchEnded = false;
                   let winner = 0;
 
@@ -1108,7 +1106,7 @@ body {
                   } else {
                       m.h.a = false; m.g.a = false; m.h.aiQueued = false; m.g.aiQueued = false;
                       m.h.ansTime = 0; m.g.ansTime = 0;
-                      m.ansTimer = null; m.timerStart = null;
+                      m.timerStart = null;
                   }
                   
                   broadcastSync();
@@ -1116,21 +1114,8 @@ body {
               }, 2500);
           }
       } else if ((m.h.a && !m.g.a) || (!m.h.a && m.g.a)) {
-          // 其中一方已作答，啟動 10 秒強制倒數
-          if (!m.ansTimer) {
-              m.ansTimer = Date.now();
-              broadcastSync();
-              let currentRound = m.cIdx;
-              setTimeout(() => {
-                  let currM = window.netState;
-                  // 若 10 秒後仍在同一回合且未作答完畢，強制未答者錯誤
-                  if (currM && currM.stat === 'play' && currM.cIdx === currentRound) {
-                      if (currM.h.a && !currM.g.a) { currM.g.a = true; currM.g.v = -1; }
-                      if (!currM.h.a && currM.g.a) { currM.h.a = true; currM.h.v = -1; }
-                      checkAdminMatchNext();
-                  }
-              }, 10000);
-          }
+          // 其中一方已作答，啟動 10 秒強制倒數已在 listener 處理，這裡僅廣播狀態
+          broadcastSync(); 
       } else { 
           broadcastSync(); 
       }
@@ -1290,7 +1275,7 @@ body {
               $('ui-combat-q').innerHTML = '<div>' + q.text + '</div>';
               $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
               
-              if (oppP && oppP.a && d.ansTimer) {
+              if (oppP && oppP.a && d.timerStart) {
                   $('ui-combat-status').textContent = "⚠️ 對手已作答，請在 10 秒內完成指令！"; 
                   $('ui-combat-status').style.color = "var(--neon-magenta)";
               } else {
