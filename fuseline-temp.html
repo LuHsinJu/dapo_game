@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆-測試</title>
+<title>導火線：切點引爆</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -472,7 +472,7 @@ body {
                             <div id="ui-res-p2s" style="font-size:48px; color:#fff; font-weight:900;" class="font-cyber">0</div>
                         </div>
                     </div>
-                    <button class="btn-cyber yellow" id="btn-return-lobby" onclick="resetArena()"><span>返回 // 等待指示</span></button>
+                    <button class="btn-cyber yellow" id="btn-return-lobby"><span>返回 // 大廳等待晉級</span></button>
                 </div>
             </div>
 
@@ -566,6 +566,8 @@ body {
   };
 
   let globalTimer = null;
+  // 防卡死機制：記錄已經看過結算畫面並按過「返回」的比賽 ID
+  let clearedMatches = new Set();
   
   // 側邊欄收合功能
   window.toggleSidebar = () => {
@@ -829,6 +831,7 @@ body {
       netMatches = {};
       localActiveMatch = null;
       localMatchId = null;
+      window.closedResultMatches = new Set();
       
       if(window.roomListenerUnsubscribe) { window.roomListenerUnsubscribe(); window.roomListenerUnsubscribe = null; }
       if(window.clientTimerInt) { clearInterval(window.clientTimerInt); window.clientTimerInt = null; }
@@ -1445,17 +1448,30 @@ body {
               });
           }
           
+          // 在 activeMatches 中尋找屬於自己的比賽，加入優先權掃描 (play > fin)
           // 在 activeMatches 中尋找屬於自己的比賽
           let ams = data.activeMatches;
           let myMatch = null;
           let myFoundMatchId = null;
           
           if (ams) {
+              // 1. 優先尋找「正在進行中」的比賽
               for (let k in ams) {
-                  if (ams[k].h.id === myId || ams[k].g.id === myId) {
+                  if ((ams[k].h.id === myId || ams[k].g.id === myId) && ams[k].stat === 'play') {
                       myMatch = ams[k];
                       myFoundMatchId = k;
                       break;
+                  }
+              }
+              // 2. 如果沒有進行中的，才找「已結束」且「還沒按過返回大廳」的比賽
+              if (!myMatch) {
+                  for (let k in ams) {
+                      if ((ams[k].h.id === myId || ams[k].g.id === myId) && ams[k].stat === 'fin') {
+                          if (!window.closedResultMatches || !window.closedResultMatches.has(k)) {
+                              myMatch = ams[k];
+                              myFoundMatchId = k;
+                          }
+                      }
                   }
               }
           }
@@ -1634,8 +1650,14 @@ body {
           let btnRet = $('btn-return-lobby');
           btnRet.innerHTML = "<span>返回 // 大廳等待晉級</span>";
           btnRet.onclick = () => {
+              if (localMatchId) {
+                  if (!window.closedResultMatches) window.closedResultMatches = new Set();
+                  window.closedResultMatches.add(localMatchId);
+              }
               $('arena-result').style.display='none'; $('arena-wait').style.display='block';
               $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 戰鬥結算完成<br><br>請等待管理員安排下一輪賽事...</div>`;
+              localActiveMatch = null;
+              localMatchId = null;
           };
       }
   }
