@@ -1085,9 +1085,10 @@ body {
           
           for (let mI in netMatches) {
               let m = netMatches[mI];
+              if (!m) continue;
               if (m.stat === 'play') {
-                  if (m.h.id === pId) { foundMatchId = mI; pKey = 'h'; break; }
-                  if (m.g.id === pId) { foundMatchId = mI; pKey = 'g'; break; }
+                  if (m.h && m.h.id === pId) { foundMatchId = mI; pKey = 'h'; break; }
+                  if (m.g && m.g.id === pId) { foundMatchId = mI; pKey = 'g'; break; }
               }
           }
           
@@ -1127,7 +1128,7 @@ body {
       
       for (let mI in netMatches) {
           let m = netMatches[mI];
-          if (m.stat !== 'play') continue;
+          if (!m || m.stat !== 'play') continue;
 
           // 檢測全域計時 (驟死賽不限時)
           if (!m.suddenDeath && !m.isTimeUp && m.matchStartTime) {
@@ -1135,8 +1136,8 @@ body {
               if (elapsed >= GAME_CFG.matchTime) {
                   m.isTimeUp = true;
                   sysNotify(`M${parseInt(mI)+1} 時間到！強制結算...`);
-                  if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = 9999999999999; }
-                  if (!m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = 9999999999999; }
+                  if (m.h && !m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = 9999999999999; }
+                  if (m.g && !m.g.a) { m.g.a = true; m.g.v = -1; m.g.ansTime = 9999999999999; }
                   m.timerStart = null;
                   checkAdminMatchNext(mI);
                   needsSync = true;
@@ -1145,7 +1146,7 @@ body {
           }
 
           // 檢測 10 秒作答計時
-          if (m.timerStart && (!m.h.a || !m.g.a)) {
+          if (m.timerStart && m.h && m.g && (!m.h.a || !m.g.a)) {
               let elapsed = (now - m.timerStart) / 1000;
               if (elapsed >= m.timerDuration) {
                   if (!m.h.a) { m.h.a = true; m.h.v = -1; m.h.ansTime = 9999999999999; }
@@ -1172,7 +1173,7 @@ body {
       
       for(let mI in netMatches) {
           let d = netMatches[mI];
-          if (d.stat !== 'play') continue;
+          if (!d || d.stat !== 'play') continue;
           hasActive = true;
           
           let roundText = d.suddenDeath ? `⚠️ 驟死賽 (${d.cIdx+1})` : `回合 ${d.cIdx+1} / ${GAME_CFG.matchRounds}`;
@@ -1183,26 +1184,31 @@ body {
               timerText = Math.max(0, r).toFixed(1) + 's';
           }
           
-          let p1Status = d.h.a ? (d.h.v === -1 ? '超時' : '已答') : '思考中';
-          let p1Color = d.h.a ? (d.h.v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
-          let p2Status = d.g.a ? (d.g.v === -1 ? '超時' : '已答') : '思考中';
-          let p2Color = d.g.a ? (d.g.v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
+          let h_a = d.h ? d.h.a : false;
+          let h_v = d.h ? d.h.v : null;
+          let g_a = d.g ? d.g.a : false;
+          let g_v = d.g ? d.g.v : null;
+          
+          let p1Status = h_a ? (h_v === -1 ? '超時' : '已答') : '思考中';
+          let p1Color = h_a ? (h_v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
+          let p2Status = g_a ? (g_v === -1 ? '超時' : '已答') : '思考中';
+          let p2Color = g_a ? (g_v === -1 ? 'var(--neon-magenta)' : 'var(--neon-green)') : 'var(--text-muted)';
           
           html += `
           <div class="alv-card">
               <div style="text-align:center; font-size:11px; color:var(--text-muted); margin-bottom:10px;" class="font-cyber">對戰編號 M${parseInt(mI)+1} | ${roundText}</div>
               <div style="display:flex; justify-content:space-between; align-items:center;">
                   <div style="text-align:center; flex:1;">
-                      <div style="color:var(--neon-cyan); font-weight:900; font-size:14px;">${d.h.n}</div>
-                      <div style="font-size:20px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">${d.h.s}</div>
+                      <div style="color:var(--neon-cyan); font-weight:900; font-size:14px;">${d.h ? d.h.n : 'P1'}</div>
+                      <div style="font-size:20px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">${d.h ? d.h.s : 0}</div>
                       <div style="font-size:10px; color:${p1Color}; font-weight:900;">${p1Status}</div>
                   </div>
                   <div style="text-align:center; padding:0 10px;">
                       <div style="font-size:18px; color:var(--neon-magenta); font-weight:900; text-shadow:0 0 10px rgba(255,0,85,0.5);" class="font-cyber">${timerText}</div>
                   </div>
                   <div style="text-align:center; flex:1;">
-                      <div style="color:var(--neon-magenta); font-weight:900; font-size:14px;">${d.g.n}</div>
-                      <div style="font-size:20px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">${d.g.s}</div>
+                      <div style="color:var(--neon-magenta); font-weight:900; font-size:14px;">${d.g ? d.g.n : 'P2'}</div>
+                      <div style="font-size:20px; color:#fff; font-weight:900; margin:5px 0;" class="font-cyber">${d.g ? d.g.s : 0}</div>
                       <div style="font-size:10px; color:${p2Color}; font-weight:900;">${p2Status}</div>
                   </div>
               </div>
@@ -1239,10 +1245,16 @@ body {
       }
       if (!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
       
+      // 確保陣列不因 Firebase 問題而被視為 undefined
+      let newQs = [];
+      for(let i=0; i<GAME_CFG.matchRounds; i++) {
+          newQs.push(getGeoTask(true)); // 洗牌
+      }
+      
       // 寫入多重賽事字典，對戰時選項洗牌 (shuffle = true)
       netMatches[mI] = {
           matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length: GAME_CFG.matchRounds}, () => getGeoTask(true)),
+          qs: newQs,
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           timerStart: null, timerDuration: 10,
@@ -1274,13 +1286,14 @@ body {
       let m = netMatches[mI]; 
       if (!m || m.stat !== 'play') return;
       
-      if (m.h.a && m.g.a) {
+      if (m.h && m.g && m.h.a && m.g.a) {
           if (!m.processing) {
               m.processing = true; // 獨立鎖定此賽事，不影響其他賽事
               m.timerStart = null;
               
-              let hAns = m.h.v === m.qs[m.cIdx].ans;
-              let gAns = m.g.v === m.qs[m.cIdx].ans;
+              let q = (m.qs && m.qs.length > m.cIdx) ? m.qs[m.cIdx] : null;
+              let hAns = q ? (m.h.v === q.ans) : false;
+              let gAns = q ? (m.g.v === q.ans) : false;
 
               if (hAns) { m.h.s += 100; m.h.cb++; m.h.maxCb = Math.max(m.h.maxCb, m.h.cb); }
               else { m.h.cb = 0; }
@@ -1348,7 +1361,7 @@ body {
                   broadcastSync();
               }, 2500);
           }
-      } else if ((m.h.a && !m.g.a) || (!m.h.a && m.g.a)) {
+      } else if (m.h && m.g && ((m.h.a && !m.g.a) || (!m.h.a && m.g.a))) {
           broadcastSync(); 
       } else { 
           broadcastSync(); 
@@ -1443,13 +1456,13 @@ body {
           let inBracket = false;
           if (bData) {
               bData.forEach(m => {
+                  if (!m) return; // 防呆
                   if (m.p1 && m.p1.id === myId) inBracket = true;
                   if (m.p2 && m.p2.id === myId) inBracket = true;
               });
           }
           
           // 在 activeMatches 中尋找屬於自己的比賽，加入優先權掃描 (play > fin)
-          // 在 activeMatches 中尋找屬於自己的比賽
           let ams = data.activeMatches;
           let myMatch = null;
           let myFoundMatchId = null;
@@ -1457,6 +1470,7 @@ body {
           if (ams) {
               // 1. 優先尋找「正在進行中」的比賽
               for (let k in ams) {
+                  if (!ams[k] || !ams[k].h || !ams[k].g) continue; // Firebase 防陣列轉化報錯
                   if ((ams[k].h.id === myId || ams[k].g.id === myId) && ams[k].stat === 'play') {
                       myMatch = ams[k];
                       myFoundMatchId = k;
@@ -1466,8 +1480,9 @@ body {
               // 2. 如果沒有進行中的，才找「已結束」且「還沒按過返回大廳」的比賽
               if (!myMatch) {
                   for (let k in ams) {
+                      if (!ams[k] || !ams[k].h || !ams[k].g) continue;
                       if ((ams[k].h.id === myId || ams[k].g.id === myId) && ams[k].stat === 'fin') {
-                          if (!window.closedResultMatches || !window.closedResultMatches.has(k)) {
+                          if (!window.closedResultMatches || !window.closedResultMatches.has(String(k))) {
                               myMatch = ams[k];
                               myFoundMatchId = k;
                           }
@@ -1518,10 +1533,17 @@ body {
           $('arena-wait').style.display='none'; $('arena-combat').style.display='block';
           $('arena-result').style.display='none';
           
-          $('ui-p1-name').textContent = d.h.n; $('ui-p1-score').textContent = d.h.s;
-          $('ui-p1-cb').textContent = `Max CB: ${d.h.maxCb} | 連擊: ${d.h.cb}`;
-          $('ui-p2-name').textContent = d.g.n; $('ui-p2-score').textContent = d.g.s;
-          $('ui-p2-cb').textContent = `Max CB: ${d.g.maxCb} | 連擊: ${d.g.cb}`;
+          // 強制資料綁定防呆 (防 Firebase 陣列 null)
+          if (d.h && d.g) {
+              $('ui-p1-name').textContent = d.h.n || 'P1'; 
+              $('ui-p1-score').textContent = d.h.s || 0;
+              $('ui-p1-cb').textContent = `Max CB: ${d.h.maxCb || 0} | 連擊: ${d.h.cb || 0}`;
+              $('ui-p2-name').textContent = d.g.n || 'P2'; 
+              $('ui-p2-score').textContent = d.g.s || 0;
+              $('ui-p2-cb').textContent = `Max CB: ${d.g.maxCb || 0} | 連擊: ${d.g.cb || 0}`;
+              $('ui-p1-bar').style.width = Math.min(100, ((d.h.s || 0) / 2000) * 100) + '%';
+              $('ui-p2-bar').style.width = Math.min(100, ((d.g.s || 0) / 2000) * 100) + '%';
+          }
           
           if(d.suddenDeath) {
               $('ui-round-num').textContent = `⚠️ 延長驟死賽 ⚠️ (回合 ${d.cIdx + 1})`;
@@ -1530,9 +1552,6 @@ body {
               $('ui-round-num').textContent = `第 ${d.cIdx+1} 回合 / 共 ${GAME_CFG.matchRounds} 回合`;
               $('ui-round-num').style.color = "var(--text-muted)";
           }
-
-          $('ui-p1-bar').style.width = Math.min(100, (d.h.s / 2000) * 100) + '%';
-          $('ui-p2-bar').style.width = Math.min(100, (d.g.s / 2000) * 100) + '%';
 
           // 處理全局計時顯示
           if (!window.clientGlobalTimerInt) {
@@ -1556,11 +1575,16 @@ body {
               }, 250);
           }
 
-          let myP = (d.h.id === myId) ? d.h : (d.g.id === myId ? d.g : null);
-          let oppP = (d.h.id === myId) ? d.g : (d.h);
-          let q = d.qs[d.cIdx];
+          let myP = (d.h && d.h.id === myId) ? d.h : (d.g && d.g.id === myId ? d.g : null);
+          let oppP = (d.h && d.h.id === myId) ? d.g : (d.h);
           
-          if (d.timerStart && (!d.h.a || !d.g.a)) {
+          let q = (d.qs && d.qs.length > d.cIdx) ? d.qs[d.cIdx] : null;
+          if (!q || !myP) {
+              $('ui-combat-q').innerHTML = '<div style="color:var(--neon-magenta);">資料庫同步異常，請稍候...</div>';
+              return; // 放棄本次渲染，等待下一次 Firebase Push
+          }
+          
+          if (d.timerStart && oppP && (!myP.a || !oppP.a)) {
               $('ui-combat-timer').style.display = 'block';
               if (!window.clientTimerInt) {
                   window.clientTimerInt = setInterval(() => {
@@ -1578,7 +1602,7 @@ body {
               if (window.clientTimerInt) { clearInterval(window.clientTimerInt); window.clientTimerInt = null; }
           }
 
-          if(myP && !myP.a) {
+          if(!myP.a) {
               $('ui-combat-q').innerHTML = '<div>' + q.text + '</div>';
               $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${o.v})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
               
@@ -1591,7 +1615,7 @@ body {
               }
           }
           
-          if(myP && myP.a) {
+          if(myP.a) {
               q.opts.forEach((o, i) => {
                   let b = $(`mp-opt-${i}`);
                   if (b) { b.disabled = true; b.classList.remove('selected', 'correct', 'wrong'); }
@@ -1616,7 +1640,7 @@ body {
                   $('ui-combat-status').style.color = "var(--neon-cyan)";
                   if(mB) mB.classList.add('selected'); 
               }
-          } else if(myP && !myP.a) {
+          } else {
               q.opts.forEach((o, i) => {
                   let b = $(`mp-opt-${i}`);
                   if (b) { b.disabled = false; b.classList.remove('correct', 'wrong', 'selected'); }
@@ -1624,14 +1648,17 @@ body {
           }
       } else if (d.stat === 'fin') {
           $('arena-combat').style.display='none'; $('arena-result').style.display='block';
-          $('ui-res-p1n').textContent = d.h.n; $('ui-res-p1s').textContent = d.h.s;
-          $('ui-res-p2n').textContent = d.g.n; $('ui-res-p2s').textContent = d.g.s;
           
-          let isP1 = (d.h.id === myId);
+          if (d.h && d.g) {
+              $('ui-res-p1n').textContent = d.h.n; $('ui-res-p1s').textContent = d.h.s;
+              $('ui-res-p2n').textContent = d.g.n; $('ui-res-p2s').textContent = d.g.s;
+          }
+          
+          let isP1 = (d.h && d.h.id === myId);
           let t = $('ui-res-title');
           
           let iWon = (isP1 && d.winner === 1) || (!isP1 && d.winner === 2);
-          let isTie = (d.h.s === d.g.s);
+          let isTie = (d.h && d.g && d.h.s === d.g.s);
           
           let winText = "勝利";
           let loseText = "落敗";
@@ -1650,9 +1677,9 @@ body {
           let btnRet = $('btn-return-lobby');
           btnRet.innerHTML = "<span>返回 // 大廳等待晉級</span>";
           btnRet.onclick = () => {
-              if (localMatchId) {
+              if (localMatchId !== null) {
                   if (!window.closedResultMatches) window.closedResultMatches = new Set();
-                  window.closedResultMatches.add(localMatchId);
+                  window.closedResultMatches.add(String(localMatchId)); // 標記為已觀看
               }
               $('arena-result').style.display='none'; $('arena-wait').style.display='block';
               $('box-guest').innerHTML=`<div style="color:var(--neon-cyan); font-size:14px; font-weight:700;" class="font-cyber">✅ 戰鬥結算完成<br><br>請等待管理員安排下一輪賽事...</div>`;
@@ -1668,6 +1695,8 @@ body {
       if(!pKey || localActiveMatch[pKey].a) return;
 
       let q = localActiveMatch.qs[localActiveMatch.cIdx];
+      if(!q) return;
+      
       q.opts.forEach((o, i) => { let b = $(`mp-opt-${i}`); if(b) b.disabled=true; }); 
       
       let myBtnIdx = q.opts.findIndex(o => o.v === val);
