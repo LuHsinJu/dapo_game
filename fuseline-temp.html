@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#090a0f">
-<title>導火線：切點引爆</title>
+<title>導火線：切點引爆-測試</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
@@ -604,8 +604,8 @@ body {
       } else { sysNotify("拒絕存取 // 密碼錯誤"); $('inp-admin-pwd').value=''; }
   };
 
-  // --- 題庫引擎 ---
-  function getGeoTask() {
+  // --- 題庫引擎 (加入 shuffle 參數，決定是否隨機洗牌選項) ---
+  function getGeoTask(shuffle = false) {
       let r = 3 + Math.floor(Math.random() * 8); 
       let rel = Math.floor(Math.random() * 3); 
       let d;
@@ -643,6 +643,14 @@ body {
           else if (rel === 1) explain = `d=r=${r}，精準接觸臨界區域，產生 1 個切點。`;
           else explain = `d=${d} > r=${r}，軌跡完全偏離圓，產生 0 個交點。`;
       }
+      
+      if (shuffle) {
+          for (let i = opts.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [opts[i], opts[j]] = [opts[j], opts[i]];
+          }
+      }
+      
       return { text, opts, ans, explain };
   }
 
@@ -704,9 +712,9 @@ body {
       $('qz-next-btn').onclick = startLocalQuiz;
   }
   
-  // 無限題數，直到時間用盡 (90秒)
+  // 單人特訓：固定選項順序
   window.startLocalQuiz = () => {
-      locQ = { q: getGeoTask(), sc:0, cb:0, ansd:false };
+      locQ = { q: getGeoTask(false), sc:0, cb:0, ansd:false };
       let t = 90; $('qz-timer-txt').textContent = `剩餘時間: ${t}s`;
       $('qz-bar').style.width = '100%';
       clearInterval(globalTimer);
@@ -727,15 +735,15 @@ body {
       $('qz-next-btn').disabled = true; 
       $('qz-next-btn').innerHTML = '<span>確認 // 繼續推進</span>';
       $('qz-combo').textContent = `連擊 x${locQ.cb}`;
-      $('qz-options').innerHTML = q.opts.map((o,i) => `<button class="opt-btn" id="qz-opt-${i}" onclick="evalLocalQ(${i},${q.ans})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
+      $('qz-options').innerHTML = q.opts.map((o,i) => `<button class="opt-btn" id="qz-opt-${i}" onclick="evalLocalQ(${i},${o.v},${q.ans})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
   }
-  window.evalLocalQ = (idx, ans) => {
+  window.evalLocalQ = (btnIdx, val, ans) => {
       if(locQ.ansd) return; locQ.ansd = true;
-      let ok = (idx === ans);
-      [0,1,2].forEach(i => {
+      let ok = (val === ans);
+      locQ.q.opts.forEach((o, i) => {
           let b = $(`qz-opt-${i}`); b.disabled = true;
-          if(i===ans) b.classList.add('correct');
-          if(i===idx && !ok) b.classList.add('wrong');
+          if(o.v === ans) b.classList.add('correct');
+          if(i === btnIdx && !ok) b.classList.add('wrong');
       });
       let fb = $('qz-feedback'); fb.style.display = 'block';
       if(ok) {
@@ -750,7 +758,7 @@ body {
       $('qz-score-txt').textContent = `當前分數: ${locQ.sc}`; $('qz-combo').textContent = `連擊 x${locQ.cb}`;
       $('qz-next-btn').disabled = false;
   };
-  window.nextLocalQuiz = () => { if(locQ.ansd){ locQ.q = getGeoTask(); drawLocalQ(); } };
+  window.nextLocalQuiz = () => { if(locQ.ansd){ locQ.q = getGeoTask(false); drawLocalQ(); } };
   function endLocalQuiz(timeout) {
       clearInterval(globalTimer);
       $('qz-bar').style.width = '0%';
@@ -1118,7 +1126,7 @@ body {
           let m = netMatches[mI];
           if (m.stat !== 'play') continue;
 
-          // 檢測 90秒全域計時 (驟死賽不限時)
+          // 檢測全域計時 (驟死賽不限時)
           if (!m.suddenDeath && !m.isTimeUp && m.matchStartTime) {
               let elapsed = (now - m.matchStartTime) / 1000;
               if (elapsed >= GAME_CFG.matchTime) {
@@ -1228,10 +1236,10 @@ body {
       }
       if (!m.p1.id || !m.p2.id) return sysNotify('錯誤: 需要兩位參賽者');
       
-      // 寫入多重賽事字典
+      // 寫入多重賽事字典，對戰時選項洗牌 (shuffle = true)
       netMatches[mI] = {
           matchId: mI, stat: 'play', cIdx: 0,
-          qs: Array.from({length: GAME_CFG.matchRounds}, getGeoTask),
+          qs: Array.from({length: GAME_CFG.matchRounds}, () => getGeoTask(true)),
           h: {id: m.p1.id, n: m.p1.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           g: {id: m.p2.id, n: m.p2.n, s: 0, a: false, v: null, cb: 0, maxCb: 0, ansTime: 0},
           timerStart: null, timerDuration: 10,
@@ -1295,7 +1303,7 @@ body {
                       if (m.sdWinner !== 0) {
                           matchEnded = true; winner = m.sdWinner;
                       } else {
-                          m.cIdx++; m.qs.push(getGeoTask());
+                          m.cIdx++; m.qs.push(getGeoTask(true)); // 驟死賽同樣洗牌
                       }
                   } else {
                       m.cIdx++;
@@ -1308,7 +1316,7 @@ body {
                               else {
                                   m.suddenDeath = true;
                                   m.isTimeUp = false; 
-                                  m.qs.push(getGeoTask());
+                                  m.qs.push(getGeoTask(true));
                                   // sysNotify 將廣播給所有人，此處僅供後台參考
                               }
                           }
@@ -1466,15 +1474,16 @@ body {
       }
   }
 
+  // 資格賽固定選項順序
   function nextAqQ() {
-      aqQ = getGeoTask();
+      aqQ = getGeoTask(false);
       $('aq-text').innerHTML = '<div>' + aqQ.text + '</div>';
-      $('aq-opts').innerHTML = aqQ.opts.map((o,i)=>`<button class="opt-btn" onclick="ansAq(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
+      $('aq-opts').innerHTML = aqQ.opts.map((o,i)=>`<button class="opt-btn" onclick="ansAq(${o.v})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
   }
 
-  window.ansAq = (idx) => {
+  window.ansAq = (val) => {
       myQualifyStats.total++;
-      if(idx === aqQ.ans) myQualifyStats.correct++;
+      if(val === aqQ.ans) myQualifyStats.correct++;
       
       let acc = Math.round((myQualifyStats.correct/myQualifyStats.total)*100);
       $('aq-stats').textContent = `正確: ${myQualifyStats.correct} / 總計: ${myQualifyStats.total} (${acc}%)`;
@@ -1555,7 +1564,7 @@ body {
 
           if(myP && !myP.a) {
               $('ui-combat-q').innerHTML = '<div>' + q.text + '</div>';
-              $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${i})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
+              $('ui-combat-opts').innerHTML = q.opts.map((o,i)=>`<button class="opt-btn" id="mp-opt-${i}" onclick="sendNetAns(${o.v})">${['A','B','C'][i]}. ${o.t}</button>`).join('');
               
               if (oppP && oppP.a && d.timerStart) {
                   $('ui-combat-status').textContent = "⚠️ 對手已作答，請在 10 秒內完成指令！"; 
@@ -1567,8 +1576,13 @@ body {
           }
           
           if(myP && myP.a) {
-              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) { b.disabled=true; b.classList.remove('selected', 'correct', 'wrong'); } });
-              let mB = $(`mp-opt-${myP.v}`);
+              q.opts.forEach((o, i) => {
+                  let b = $(`mp-opt-${i}`);
+                  if (b) { b.disabled = true; b.classList.remove('selected', 'correct', 'wrong'); }
+              });
+              
+              let myBtnIdx = q.opts.findIndex(o => o.v === myP.v);
+              let mB = $(`mp-opt-${myBtnIdx}`);
               
               if(oppP && oppP.a) {
                   $('ui-combat-status').textContent = "處理下一回合資料..."; 
@@ -1576,16 +1590,21 @@ body {
                   
                   if(mB) {
                       mB.classList.remove('selected');
-                      mB.classList.add(myP.v===q.ans ? 'correct':'wrong');
+                      mB.classList.add(myP.v === q.ans ? 'correct':'wrong');
                   }
-                  let cB = $(`mp-opt-${q.ans}`); if(cB) cB.classList.add('correct'); 
+                  let ansBtnIdx = q.opts.findIndex(o => o.v === q.ans);
+                  let cB = $(`mp-opt-${ansBtnIdx}`); 
+                  if(cB) cB.classList.add('correct'); 
               } else {
                   $('ui-combat-status').textContent = "你已作答，等待對手回應 (限時 10 秒)..."; 
                   $('ui-combat-status').style.color = "var(--neon-cyan)";
                   if(mB) mB.classList.add('selected'); 
               }
           } else if(myP && !myP.a) {
-              [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) { b.disabled=false; b.classList.remove('correct', 'wrong', 'selected'); } });
+              q.opts.forEach((o, i) => {
+                  let b = $(`mp-opt-${i}`);
+                  if (b) { b.disabled = false; b.classList.remove('correct', 'wrong', 'selected'); }
+              });
           }
       } else if (d.stat === 'fin') {
           $('arena-combat').style.display='none'; $('arena-result').style.display='block';
@@ -1626,9 +1645,11 @@ body {
       let pKey = (localActiveMatch.h.id === myId) ? 'h' : (localActiveMatch.g.id === myId ? 'g' : null);
       if(!pKey || localActiveMatch[pKey].a) return;
 
-      [0,1,2].forEach(v=>{ let b=$(`mp-opt-${v}`); if(b) b.disabled=true; }); 
+      let q = localActiveMatch.qs[localActiveMatch.cIdx];
+      q.opts.forEach((o, i) => { let b = $(`mp-opt-${i}`); if(b) b.disabled=true; }); 
       
-      let mB = $(`mp-opt-${val}`);
+      let myBtnIdx = q.opts.findIndex(o => o.v === val);
+      let mB = $(`mp-opt-${myBtnIdx}`);
       if(mB) mB.classList.add('selected');
 
       // 本地搶先預先顯示 UI
